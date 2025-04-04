@@ -1,0 +1,706 @@
+:root {
+    --primary-color: #26a69a;
+    --completed-color: #4CAF50;
+    --urgent-color: #f44336;
+    --important-color: #ffc107;
+    --text-color: #333;
+    --background-color: #e0f2f1;
+    --card-background: #fff;
+    --transition-speed: 0.3s;
+    --border-color: #ccc;
+    --input-bg: #f9f9f9;
+    --placeholder-color: #666;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background-color: var(--background-color);
+    color: var(--text-color);
+    min-height: 100vh;
+}
+
+.container {
+    display: flex;
+    max-width: 1440px;
+    margin: 2rem auto;
+    background: var(--card-background);
+    border-radius: 20px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+/* Sidebar Styles */
+.sidebar {
+    width: 300px;
+    background: var(--primary-color);
+    padding: 2rem;
+    color: white;
+}
+
+.user-info h2 {
+    margin-bottom: 2rem;
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: var(--transition-speed);
+    display: inline-block;
+}
+
+.user-info h2:hover {
+    opacity: 0.8;
+    transform: translateY(-2px);
+}
+
+.search-box {
+    margin-bottom: 2rem;
+}
+
+.search-input {
+    width: 100%;
+    padding: 0.8rem;
+    border: none;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    transition: var(--transition-speed);
+}
+
+.search-input::placeholder {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.filters {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* Main Content Styles */
+.main-content {
+    flex: 1;
+    padding: 2rem;
+    background: var(--background-color);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.task-count {
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+/* Button Styles */
+.filter-btn, .add-task-btn, .clear-completed-btn {
+    padding: 0.8rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: var(--transition-speed);
+    font-weight: 500;
+}
+
+.add-task-btn {
+    background: var(--primary-color);
+    color: white;
+}
+
+.clear-completed-btn {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.filter-btn.completed {
+    background: var(--completed-color);
+    color: white;
+}
+
+.filter-btn.urgent {
+    background: var(--urgent-color);
+    color: white;
+}
+
+.filter-btn.important {
+    background: var(--important-color);
+    color: var(--text-color);
+}
+
+/* Tasks Container */
+.tasks-container {
+    margin: 2rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.task-item {
+    background: var(--card-background);
+    padding: 1rem;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: var(--transition-speed);
+}
+
+/* Stats Section */
+.stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+.stat-card {
+    background: var(--card-background);
+    padding: 1.5rem;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-top: 0.5rem;
+}
+
+.date-display {
+    text-align: right;
+}
+
+.day {
+    font-size: 1.5rem;
+    color: var(--primary-color);
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal-content {
+    background: var(--primary-color);
+    padding: 2rem;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 800px;
+    color: white;
+}
+
+.modal-content h2 {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+}
+
+.task-input {
+    width: 100%;
+    padding: 1rem;
+    border: none;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    font-size: 1rem;
+}
+
+.form-section {
+    margin: 1.5rem 0;
+}
+
+.form-section h3 {
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
+}
+
+.datetime-container {
+    display: flex;
+    gap: 2rem;
+    background: white;
+    padding: 1.5rem;
+    border-radius: 12px;
+    color: var(--text-color);
+}
+
+/* Date Picker Styles */
+.date-picker {
+    flex: 1;
+    max-width: 350px;
+}
+
+.date-picker h4 {
+    margin-bottom: 1rem;
+    color: #666;
+}
+
+.month-selector {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.current-month {
+    font-weight: 600;
+}
+
+.month-nav {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.nav-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    color: var(--primary-color);
+}
+
+.calendar {
+    width: 100%;
+}
+
+.weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 0.5rem;
+}
+
+.days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.25rem;
+}
+
+.days span {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 2.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.days span.selected {
+    background: var(--primary-color);
+    color: white;
+}
+
+/* Time Picker Styles */
+.time-selectors {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.time-picker {
+    background: #f5f5f5;
+    padding: 1rem;
+    border-radius: 8px;
+}
+
+.time-picker label {
+    display: block;
+    margin-bottom: 0.75rem;
+    color: #666;
+}
+
+.time-input-container {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.time-inputs {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: white;
+    padding: 0.5rem;
+    border-radius: 4px;
+}
+
+.hour-select,
+.minute-select,
+.ampm-select {
+    border: none;
+    background: none;
+    font-size: 1rem;
+    padding: 0.25rem;
+    cursor: pointer;
+}
+
+.ok-btn {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+/* Importance Selector Styles */
+.importance-selector {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.importance-btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: transform 0.2s;
+}
+
+.importance-btn.completed {
+    background: var(--completed-color);
+    color: white;
+}
+
+.importance-btn.important {
+    background: var(--important-color);
+    color: var(--text-color);
+}
+
+.importance-btn.urgent {
+    background: var(--urgent-color);
+    color: white;
+}
+
+.importance-btn:hover {
+    transform: translateY(-2px);
+}
+
+.submit-task-btn {
+    width: 100%;
+    padding: 1rem;
+    background: white;
+    color: var(--primary-color);
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 1.5rem;
+    transition: transform 0.2s;
+}
+
+.submit-task-btn:hover {
+    transform: translateY(-2px);
+}
+
+/* Hover Effects */
+.filter-btn:hover,
+.add-task-btn:hover,
+.clear-completed-btn:hover,
+.submit-task-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.task-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.task-item {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Daily Tasks Overlay Styles */
+.daily-tasks-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+}
+
+.daily-tasks-overlay.active {
+    display: flex;
+}
+
+.daily-tasks-content {
+    background: var(--card-background);
+    padding: 2rem;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.daily-tasks-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #eee;
+}
+
+.daily-tasks-header h3 {
+    font-size: 1.5rem;
+    color: var(--primary-color);
+}
+
+.close-overlay {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #666;
+    cursor: pointer;
+    padding: 0.5rem;
+    transition: var(--transition-speed);
+}
+
+.close-overlay:hover {
+    color: var(--primary-color);
+    transform: scale(1.1);
+}
+
+.daily-tasks-list {
+    flex: 1;
+    overflow-y: auto;
+    margin: 1rem 0;
+    padding-right: 1rem;
+}
+
+.daily-tasks-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.daily-tasks-list::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.daily-tasks-list::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 3px;
+}
+
+.daily-task-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    background: #f8f8f8;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    transition: var(--transition-speed);
+}
+
+.daily-task-item:hover {
+    transform: translateX(5px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.daily-task-item .task-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.daily-task-item .task-time {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.daily-task-item .task-status {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.daily-tasks-summary {
+    display: flex;
+    justify-content: space-around;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+}
+
+.summary-item {
+    text-align: center;
+}
+
+.summary-item .label {
+    display: block;
+    color: #666;
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+}
+
+.summary-item .total-count,
+.summary-item .completed-count,
+.summary-item .pending-count {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--primary-color);
+} 
+
+/* Login Form Styles */
+#login-username,
+#login-password,
+#register-username,
+#register-email,
+#register-password,
+#register-confirm-password {
+    width: 100%;
+    padding: 15px;
+    margin-bottom: 20px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: var(--input-bg);
+    color: var(--text-color);
+    font-family: 'Vazir', sans-serif;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    box-sizing: border-box;
+}
+
+#login-username:focus,
+#login-password:focus,
+#register-username:focus,
+#register-email:focus,
+#register-password:focus,
+#register-confirm-password:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(0, 150, 136, 0.2);
+    outline: none;
+}
+
+#login-username::placeholder,
+#login-password::placeholder,
+#register-username::placeholder,
+#register-email::placeholder,
+#register-password::placeholder,
+#register-confirm-password::placeholder {
+    color: var(--placeholder-color);
+    opacity: 0;
+}
+
+.form-group {
+    width: 100%;
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: var(--text-color);
+}
+
+.auth-container {
+    width: 100%;
+    max-width: 400px;
+}
+
+/* Add these styles to your CSS file */
+.delete-task-btn {
+    background-color: var(--urgent-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+    margin-left: 0.5rem;
+    cursor: pointer;
+    transition: var(--transition-speed);
+}
+
+.delete-task-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.no-tasks {
+    text-align: center;
+    padding: 2rem;
+    color: #666;
+    font-style: italic;
+}
+
+.logout-btn {
+    background-color: var(--danger-color, #f44336);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 5px 10px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: background-color 0.3s;
+}
+
+.logout-btn:hover {
+    background-color: #d32f2f;
+}
+
+/* RTL Support for Persian */
+body.rtl,
+.rtl .container,
+.rtl .search-input,
+.rtl .task-item,
+.rtl .task-meta,
+.rtl .daily-task-item,
+.rtl .daily-tasks-header {
+    direction: rtl;
+    text-align: right;
+}
+
+.rtl .daily-task-item .task-content {
+    flex-direction: row-reverse;
+}
+
+@font-face {
+    font-family: 'Vazir';
+    src: url('https://cdn.jsdelivr.net/gh/rastikerdar/vazir-font@v30.1.0/dist/Vazir-Regular.woff2') format('woff2');
+    font-weight: normal;
+    font-style: normal;
+}
+
+.rtl * {
+    font-family: 'Vazir', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}

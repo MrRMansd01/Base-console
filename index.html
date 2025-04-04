@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مدیریت تسک</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="user-info">
+                <h2 id="username">کاربر</h2>
+                <button id="logout-btn" class="logout-btn">خروج</button>
+            </div>
+            <div class="search-box">
+                <input type="text" placeholder="جستجو" class="search-input">
+            </div>
+            <div class="filters">
+                <button class="filter-btn completed">تکمیل شده</button>
+                <button class="filter-btn urgent">فوری</button>
+                <button class="filter-btn important">مهم</button>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="header">
+                <div class="task-count">
+                    <span class="task-count-number">0</span>
+                    <span class="task-count-text">تسک</span>
+                </div>
+                <button class="add-task-btn">افزودن تسک جدید</button>
+                <button class="clear-completed-btn">حذف تکمیل شده‌ها</button>
+            </div>
+            
+            <div class="tasks-container">
+                <!-- Tasks will be dynamically added here -->
+            </div>
+
+            <div class="task-filters">
+                <button class="filter-btn active">فعال</button>
+                <button class="filter-btn all">همه</button>
+                <button class="filter-btn completed">تکمیل شده</button>
+            </div>
+
+            <div class="stats">
+                <div class="stat-card">
+                    <h3>تسک‌های تکمیل شده</h3>
+                    <div class="stat-number">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>تسک‌های در انتظار</h3>
+                    <div class="stat-number">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>کل مطالعه</h3>
+                    <div class="stat-number">0 ساعت</div>
+                </div>
+                <div class="date-display">
+                    <div class="day">یکشنبه</div>
+                    <div class="full-date">۱۶ فروردین ۱۴۰۴</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Task Creation Modal -->
+    <div class="modal" id="taskModal">
+        <div class="modal-content">
+            <h2>ایجاد تسک</h2>
+            <input type="text" placeholder="توضیحات تسک..." class="task-input">
+            
+            <div class="form-section">
+                <h3>تاریخ و زمان</h3>
+                <div class="datetime-container">
+                    <div class="date-picker">
+                        <h4>انتخاب تاریخ</h4>
+                        <div class="month-selector">
+                            <span class="current-month">فروردین ۱۴۰۴</span>
+                            <div class="month-nav">
+                                <button class="nav-btn prev">&lt;</button>
+                                <button class="nav-btn next">&gt;</button>
+                            </div>
+                        </div>
+                        <div class="calendar">
+                            <div class="weekdays">
+                                <span>ش</span>
+                                <span>ی</span>
+                                <span>د</span>
+                                <span>س</span>
+                                <span>چ</span>
+                                <span>پ</span>
+                                <span>ج</span>
+                            </div>
+                            <div class="days">
+                                <!-- Days will be populated by JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="time-selectors">
+                        <div class="time-picker">
+                            <label>زمان شروع</label>
+                            <div class="time-input-container">
+                                <div class="time-inputs">
+                                    <select class="hour-select"></select>
+                                    <span>:</span>
+                                    <select class="minute-select"></select>
+                                </div>
+                                <select class="ampm-select">
+                                    <option value="AM">صبح</option>
+                                    <option value="PM">عصر</option>
+                                </select>
+                                <button class="ok-btn">تایید</button>
+                            </div>
+                        </div>
+
+                        <div class="time-picker">
+                            <label>زمان پایان</label>
+                            <div class="time-input-container">
+                                <div class="time-inputs">
+                                    <select class="hour-select"></select>
+                                    <span>:</span>
+                                    <select class="minute-select"></select>
+                                </div>
+                                <select class="ampm-select">
+                                    <option value="AM">صبح</option>
+                                    <option value="PM">عصر</option>
+                                </select>
+                                <button class="ok-btn">تایید</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3>اهمیت</h3>
+                <div class="importance-selector">
+                    <button class="importance-btn completed">۱ امتیاز</button>
+                    <button class="importance-btn important">۲ امتیاز</button>
+                    <button class="importance-btn urgent">۳ امتیاز</button>
+                </div>
+            </div>
+
+            <button class="submit-task-btn">ثبت تسک</button>
+        </div>
+    </div>
+
+    <!-- Daily Tasks Overlay -->
+    <div class="daily-tasks-overlay" id="dailyTasksOverlay">
+        <div class="daily-tasks-content">
+            <div class="daily-tasks-header">
+                <h3>تسک‌های <span class="selected-date"></span></h3>
+                <button class="close-overlay">&times;</button>
+            </div>
+            <div class="daily-tasks-list">
+                <!-- Tasks will be populated here -->
+            </div>
+            <div class="daily-tasks-summary">
+                <div class="summary-item">
+                    <span class="label">کل تسک‌ها:</span>
+                    <span class="total-count">0</span>
+                </div>
+                <div class="summary-item">
+                    <span class="label">تکمیل شده:</span>
+                    <span class="completed-count">0</span>
+                </div>
+                <div class="summary-item">
+                    <span class="label">در انتظار:</span>
+                    <span class="pending-count">0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Check authentication status
+        async function checkAuth() {
+            try {
+                const response = await fetch('/api/check-auth');
+                const data = await response.json();
+                
+                if (!data.authenticated) {
+                    // Redirect to login page if not authenticated
+                    window.location.href = '/login';
+                } else {
+                    // Update UI with user information
+                    document.getElementById('username').textContent = data.user.username;
+                }
+            } catch (error) {
+                console.error('Auth check error:', error);
+                window.location.href = '/login';
+            }
+        }
+
+        // Handle logout
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            window.location.href = '/logout';
+        });
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAuth()
+        });
+    </script>
+    <!-- در index.html، قبل از app.js این اسکریپت را اضافه کنید -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // تعریف تابع createClient برای استفاده در app.js
+        const { createClient } = supabase;
+    </script>
+    <script src="app.js"></script>
+</body>
+</html>
