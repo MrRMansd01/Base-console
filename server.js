@@ -28,10 +28,9 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(session({
     secret: 'your-secret-key',
-    resave: true, 
+    resave: false, 
     saveUninitialized: false,
     cookie: { 
-        secure: false,
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
         httpOnly: true
     }
@@ -39,13 +38,12 @@ app.use(session({
 
 // Enable session debugging
 app.use((req, res, next) => {
-    console.log('Session ID:', req.sessionID);
-    console.log('Session Data:', req.session);
+    console.log('Session:', req.session);
     next();
 });
 
 // Serve static files from the current directory
-app.use(express.static(path.join(__dirname)));
+app.use(express.static(__dirname));
 
 // Routes
 app.get('/login', (req, res) => {
@@ -56,135 +54,95 @@ app.get('/login', (req, res) => {
 });
 
 app.post('/login', (req, res) => {
-    console.log('Login request received:', req.body);
     const { username, password } = req.body;
     
-    console.log('Login attempt:', username, 'Password:', password);
-    
-    // Find user
-    const user = users.find(u => u.username === username);
-    
-    if (!user) {
-        console.log('User not found:', username);
-        return res.redirect('/login?error=invalid_credentials');
+    // Simple validation
+    if (!username || !password) {
+        return res.status(400).json({ error: 'نام کاربری و رمز عبور الزامی است' });
     }
     
-    console.log('User found:', user.username, 'Stored password:', user.password);
-    
-    // Compare password directly (for testing only - in production use bcrypt)
-    if (password === user.password) {
-        console.log('Password match successful for:', username);
-        
-        // Force regenerate the session to ensure clean state
+    // For demo purposes, hardcoded credentials
+    if (username === 'admin' && password === 'admin123') {
+        // Regenerate session to prevent session fixation
         req.session.regenerate(function(err) {
             if (err) {
-                console.error('Error regenerating session:', err);
-                return res.redirect('/login?error=server');
+                return res.status(500).json({ error: 'خطا در ایجاد جلسه' });
             }
             
-            // Store user in session (without password)
-            req.session.user = { id: user.id, username: user.username };
+            // Store user info in session
+            req.session.user = {
+                id: 1,
+                username: 'admin',
+                name: 'مدیر سیستم'
+            };
             
-            // Save session explicitly before redirect
+            // Save the session explicitly
             req.session.save(function(err) {
                 if (err) {
-                    console.error('Error saving session:', err);
-                    return res.redirect('/login?error=server');
+                    return res.status(500).json({ error: 'خطا در ذخیره جلسه' });
                 }
-                console.log('Session saved successfully:', req.session);
-                return res.redirect('/');
+                
+                return res.json({ success: true, user: req.session.user });
             });
         });
     } else {
-        console.log('Password match failed for:', username);
-        return res.redirect('/login?error=invalid_credentials');
-    }
-});
-
-// Register new user
-app.post('/register', async (req, res) => {
-    const { username, email, password } = req.body;
-    
-    // Validate input
-    if (!username || !password) {
-        return res.redirect('/login?error=empty_fields');
-    }
-    
-    // Check if username already exists
-    if (users.some(u => u.username === username)) {
-        return res.redirect('/login?error=user_exists');
-    }
-    
-    // Check if email already exists (if provided)
-    if (email && users.some(u => u.email === email)) {
-        return res.redirect('/login?error=user_exists');
-    }
-    
-    try {
-        // Create new user with plain password for testing
-        const newUser = {
-            id: users.length + 1,
-            username,
-            email,
-            password: password // In production, use bcrypt to hash password
-        };
-        
-        // Add user to array (in a real app, this would be saved to a database)
-        users.push(newUser);
-        
-        // Regenerate session for clean state
-        req.session.regenerate(function(err) {
-            if (err) {
-                console.error('Error regenerating session:', err);
-                return res.redirect('/login?error=server');
-            }
-            
-            // Store user data in new session
-            req.session.user = { id: newUser.id, username: newUser.username };
-            
-            // Save session explicitly before redirect
-            req.session.save(function(err) {
-                if (err) {
-                    console.error('Error saving session:', err);
-                    return res.redirect('/login?error=server');
-                }
-                console.log('Session saved after registration:', req.session);
-                return res.redirect('/');
-            });
-        });
-    } catch (err) {
-        console.error(err);
-        return res.redirect('/login?error=server');
+        return res.status(401).json({ error: 'نام کاربری یا رمز عبور اشتباه است' });
     }
 });
 
 app.get('/logout', (req, res) => {
-    req.session.destroy(err => {
+    req.session.destroy((err) => {
         if (err) {
-            console.error('Error destroying session:', err);
+            return res.status(500).json({ error: 'خطا در خروج از سیستم' });
         }
-        res.redirect('/login');
+        
+        res.redirect('/login.html');
     });
 });
 
-// Unified root route
-app.get('/', (req, res) => {
-    console.log('User accessing root page:', req.session);
-    if (req.session && req.session.user) {
-        console.log('User is authenticated, serving index.html');
-        res.sendFile(path.join(__dirname, 'index.html'));
-    } else {
-        console.log('User is not authenticated, redirecting to login');
-        res.redirect('/login');
+// Register route
+app.post('/register', async (req, res) => {
+    const { username, email, password } = req.body;
+    
+    // Simple validation
+    if (!username || !email || !password) {
+        return res.status(400).json({ error: 'تمام فیلدها الزامی هستند' });
+    }
+    
+    try {
+        // Forward registration to client-side Supabase
+        // Since Supabase auth is handled client-side, we'll just return success
+        // The actual registration will happen in the browser using Supabase JS client
+        return res.json({ 
+            success: true, 
+            message: 'لطفا با استفاده از Supabase در سمت کلاینت ثبت‌نام کنید' 
+        });
+    } catch (error) {
+        console.error('Error in registration:', error);
+        return res.status(500).json({ error: 'خطا در ثبت‌نام. لطفا دوباره تلاش کنید.' });
     }
 });
 
-// API to check if user is logged in
+// Main route
+app.get('/', (req, res) => {
+    if (!req.session.user) {
+        return res.redirect('/login');
+    }
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// API route to check authentication status
 app.get('/api/check-auth', (req, res) => {
     if (req.session.user) {
-        return res.json({ authenticated: true, user: req.session.user });
+        return res.json({ 
+            authenticated: true, 
+            user: req.session.user 
+        });
+    } else {
+        return res.json({ 
+            authenticated: false 
+        });
     }
-    res.json({ authenticated: false });
 });
 
 const PORT = 3001;

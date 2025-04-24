@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ورود به سیستم مدیریت تسک</title>
+    <!-- Add Supabase JS library -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <style>
         :root {
             --primary-color: #009688;
@@ -308,10 +310,10 @@
         </div>
         
         <div class="form-tab active" id="login-form">
-            <form action="/login" method="POST">
+            <form id="login-form-element">
                 <div class="form-group">
-                    <label for="login-username">نام کاربری</label>
-                    <input type="text" id="login-username" name="username" class="form-control" placeholder="نام کاربری خود را وارد کنید" required>
+                    <label for="login-username">ایمیل</label>
+                    <input type="email" id="login-username" name="username" class="form-control" placeholder="ایمیل خود را وارد کنید" required>
                 </div>
                 
                 <div class="form-group">
@@ -326,15 +328,20 @@
         </div>
         
         <div class="form-tab" id="register-form">
-            <form action="/register" method="POST">
+            <form id="register-form-element">
                 <div class="form-group">
                     <label for="register-username">نام کاربری</label>
                     <input type="text" id="register-username" name="username" class="form-control" placeholder="یک نام کاربری انتخاب کنید" required>
                 </div>
                 
                 <div class="form-group">
+                    <label for="name">نام</label>
+                    <input type="text" id="name" name="name" class="form-control" placeholder="نام خود را وارد کنید" required>
+                </div>
+                
+                <div class="form-group">
                     <label for="register-email">ایمیل</label>
-                    <input type="email" id="register-email" name="email" class="form-control" placeholder="ایمیل خود را وارد کنید">
+                    <input type="email" id="register-email" name="email" class="form-control" placeholder="ایمیل خود را وارد کنید" required>
                 </div>
                 
                 <div class="form-group">
@@ -352,6 +359,11 @@
     </div>
 
     <script>
+        // Initialize Supabase client
+        const supabaseUrl = 'https://lholzspyazziknxqopmi.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxob2x6c3B5YXp6aWtueHFvcG1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIwMjc0MTAsImV4cCI6MjA1NzYwMzQxMH0.uku06OF-WapBhuV-A_rJBXu3x24CKKkSTM0SnmPIOOE';
+        const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+
         // Toggle between login and register tabs
         document.getElementById('login-tab').addEventListener('click', () => {
             document.getElementById('login-tab').classList.add('active');
@@ -401,25 +413,153 @@
                         document.getElementById('register-tab').click();
                         break;
                     case 'empty_fields':
-                        errorMessage = 'لطفاً تمام فیلدهای ضروری را پر کنید.';
+                        errorMessage = 'لطفا تمام فیلدها را پر کنید.';
+                        break;
+                    case 'server':
+                        errorMessage = 'خطا در سرور. لطفا دوباره تلاش کنید.';
                         break;
                     default:
-                        errorMessage = 'خطایی رخ داده است. لطفاً دوباره تلاش کنید.';
+                        errorMessage = 'خطایی رخ داده است. لطفا دوباره تلاش کنید.';
                 }
                 showMessage(errorMessage, 'error');
             }
-            
+
             const success = getUrlParameter('success');
             if (success) {
-                let successMessage = '';
-                switch(success) {
-                    case 'registered':
-                        successMessage = 'ثبت نام با موفقیت انجام شد. اکنون می‌توانید وارد شوید.';
-                        break;
-                    default:
-                        successMessage = 'عملیات با موفقیت انجام شد.';
+                showMessage('عملیات با موفقیت انجام شد.', 'success');
+            }
+        });
+
+        // Handle login form submission
+        document.getElementById('login-form-element').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('login-username').value;
+            const password = document.getElementById('login-password').value;
+            
+            if (!username || !password) {
+                showMessage('لطفا ایمیل و رمز عبور را وارد کنید.', 'error');
+                return;
+            }
+            
+            try {
+                console.log('Attempting login with:', { email: username });
+                
+                // Sign in with Supabase
+                const { data, error } = await supabaseClient.auth.signInWithPassword({
+                    email: username,
+                    password: password
+                });
+                
+                if (error) {
+                    console.error('Supabase login error:', error);
+                    throw error;
                 }
-                showMessage(successMessage, 'success');
+                
+                console.log('Login successful:', data);
+                
+                // Redirect to main page on successful login
+                window.location.href = '/';
+            } catch (error) {
+                console.error('Login error:', error);
+                
+                // Show more detailed error message
+                let errorMsg = 'خطا در ورود: ';
+                if (error.message.includes('Invalid login credentials')) {
+                    errorMsg = 'ایمیل یا رمز عبور اشتباه است.';
+                } else {
+                    errorMsg += error.message;
+                }
+                
+                showMessage(errorMsg, 'error');
+            }
+        });
+
+        // Handle register form submission
+        document.getElementById('register-form-element').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('register-username').value;
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            
+            if (!username || !email || !password) {
+                showMessage('لطفا تمام فیلدها را پر کنید.', 'error');
+                return;
+            }
+            
+            try {
+                console.log('Attempting registration with:', { email, username });
+                
+                // Sign up with Supabase
+                const { data, error } = await supabaseClient.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: {
+                        data: {
+                            username: username
+                        }
+                    }
+                });
+                
+                if (error) {
+                    console.error('Supabase signup error:', error);
+                    throw error;
+                }
+                
+                console.log('Registration successful:', data);
+                
+                // Check if user table exists before inserting
+                try {
+                    // Create user profile in profiles table
+                    const { error: profileError } = await supabaseClient
+                        .from('profiles')
+                        .insert([
+                            { 
+                                id: data.user.id,
+                                name: username,
+                                email: email,
+                                created_at: new Date().toISOString(),
+                                updated_at: new Date().toISOString()
+                            }
+                        ]);
+                    
+                    if (profileError) {
+                        console.error('Profile creation error:', profileError);
+                        console.log('Profile error details:', profileError.details, profileError.hint, profileError.message);
+                        // Continue even if profile creation fails
+                        console.log('Continuing despite profile error');
+                    } else {
+                        console.log('Profile created successfully');
+                    }
+                } catch (profileCreationError) {
+                    console.error('Error creating profile:', profileCreationError);
+                    // Continue even if profile creation fails
+                }
+                
+                showMessage('ثبت‌نام با موفقیت انجام شد. لطفا وارد شوید.', 'success');
+                
+                // Switch to login tab
+                setTimeout(() => {
+                    document.getElementById('login-tab').click();
+                }, 2000);
+                
+            } catch (error) {
+                console.error('Registration error:', error);
+                
+                // Show more detailed error message
+                let errorMsg = 'خطا در ثبت‌نام: ';
+                if (error.message.includes('User already registered')) {
+                    errorMsg = 'این ایمیل قبلاً ثبت شده است.';
+                } else if (error.message.includes('Password should be at least')) {
+                    errorMsg = 'رمز عبور باید حداقل ۶ کاراکتر باشد.';
+                } else if (error.message.includes('Email not confirmed')) {
+                    errorMsg = 'ایمیل تایید نشده است. لطفا ایمیل خود را بررسی کنید.';
+                } else {
+                    errorMsg += error.message;
+                }
+                
+                showMessage(errorMsg, 'error');
             }
         });
     </script>

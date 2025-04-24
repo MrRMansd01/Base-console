@@ -3,26 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مدیریت تسک</title>
+    <title>سیستم مدیریت تسک</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Flatpickr CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 </head>
 <body>
     <div class="container">
-        <div class="sidebar">
-            <div class="user-info">
-                <h2 id="username">کاربر</h2>
-                <button id="logout-btn" class="logout-btn">خروج</button>
-            </div>
-            <div class="search-box">
-                <input type="text" placeholder="جستجو" class="search-input">
-            </div>
-            <div class="filters">
-                <button class="filter-btn completed">تکمیل شده</button>
-                <button class="filter-btn urgent">فوری</button>
-                <button class="filter-btn important">مهم</button>
-            </div>
-        </div>
-        
         <div class="main-content">
             <div class="header">
                 <div class="task-count">
@@ -38,9 +27,9 @@
             </div>
 
             <div class="task-filters">
-                <button class="filter-btn active">فعال</button>
-                <button class="filter-btn all">همه</button>
-                <button class="filter-btn completed">تکمیل شده</button>
+                <button class="filter-btn" data-filter="incomplete">در حال انجام</button>
+                <button class="filter-btn active all" data-filter="all">همه</button>
+                <button class="filter-btn completed" data-filter="completed">تکمیل شده</button>
             </div>
 
             <div class="stats">
@@ -54,7 +43,7 @@
                 </div>
                 <div class="stat-card">
                     <h3>کل مطالعه</h3>
-                    <div class="stat-number">0 ساعت</div>
+                    <div class="stat-number">0:00</div>
                 </div>
                 <div class="date-display">
                     <div class="day">یکشنبه</div>
@@ -62,152 +51,149 @@
                 </div>
             </div>
         </div>
+        <div class="sidebar">
+            <div class="user-info">
+                <h2 id="username">کاربر</h2>
+                <button id="logout-btn" class="logout-btn">خروج</button>
+            </div>
+            <div class="search-box">
+                <input type="text" placeholder="جستجو" class="search-input">
+            </div>
+            <div class="users-list">
+                <h3>کاربران</h3>
+                <ul id="users-container">
+                    <!-- لیست کاربران به صورت پویا اینجا اضافه می‌شود -->
+                    <li class="loading-users">در حال بارگذاری کاربران...</li>
+                </ul>
+            </div>
+        </div>
     </div>
 
     <!-- Task Creation Modal -->
-    <div class="modal" id="taskModal">
+    <div id="taskModal" class="modal">
         <div class="modal-content">
-            <h2>ایجاد تسک</h2>
-            <input type="text" placeholder="توضیحات تسک..." class="task-input">
+            <h2>New Task</h2>
             
-            <div class="form-section">
-                <h3>تاریخ و زمان</h3>
-                <div class="datetime-container">
-                    <div class="date-picker">
-                        <h4>انتخاب تاریخ</h4>
-                        <div class="month-selector">
-                            <span class="current-month">فروردین ۱۴۰۴</span>
-                            <div class="month-nav">
-                                <button class="nav-btn prev">&lt;</button>
-                                <button class="nav-btn next">&gt;</button>
-                            </div>
-                        </div>
-                        <div class="calendar">
-                            <div class="weekdays">
-                                <span>ش</span>
-                                <span>ی</span>
-                                <span>د</span>
-                                <span>س</span>
-                                <span>چ</span>
-                                <span>پ</span>
-                                <span>ج</span>
-                            </div>
-                            <div class="days">
-                                <!-- Days will be populated by JavaScript -->
-                            </div>
-                        </div>
-                    </div>
+            <!-- Title Input -->
+            <div class="form-group">
+                <label>Title</label>
+                <input type="text" id="task-title" class="task-input" placeholder="Enter task title...">
+            </div>
 
-                    <div class="time-selectors">
-                        <div class="time-picker">
-                            <label>زمان شروع</label>
-                            <div class="time-input-container">
-                                <div class="time-inputs">
-                                    <select class="hour-select"></select>
-                                    <span>:</span>
-                                    <select class="minute-select"></select>
-                                </div>
-                                <select class="ampm-select">
-                                    <option value="AM">صبح</option>
-                                    <option value="PM">عصر</option>
-                                </select>
-                                <button class="ok-btn">تایید</button>
-                            </div>
-                        </div>
-
-                        <div class="time-picker">
-                            <label>زمان پایان</label>
-                            <div class="time-input-container">
-                                <div class="time-inputs">
-                                    <select class="hour-select"></select>
-                                    <span>:</span>
-                                    <select class="minute-select"></select>
-                                </div>
-                                <select class="ampm-select">
-                                    <option value="AM">صبح</option>
-                                    <option value="PM">عصر</option>
-                                </select>
-                                <button class="ok-btn">تایید</button>
-                            </div>
-                        </div>
-                    </div>
+            <!-- Date Picker -->
+            <div class="form-group">
+                <label>Date</label>
+                <!-- Wrap input and button for Flatpickr wrap:true -->
+                <div class="flatpickr-wrapper" style="position: relative;">
+                    <input type="text" id="task-date" class="date-input" placeholder="انتخاب تاریخ..." data-input>
+                    <button class="calendar-btn" title="تقویم" data-toggle>
+                        <i class="fas fa-calendar"></i>
+                    </button>
                 </div>
             </div>
 
-            <div class="form-section">
-                <h3>اهمیت</h3>
-                <div class="importance-selector">
-                    <button class="importance-btn completed">۱ امتیاز</button>
-                    <button class="importance-btn important">۲ امتیاز</button>
-                    <button class="importance-btn urgent">۳ امتیاز</button>
+            <!-- Time Pickers -->
+            <div class="form-group time-pickers">
+                <div class="time-picker-start">
+                    <label>Start time</label>
+                    <input type="time" id="time-start" class="time-input">
+                </div>
+                <div class="time-picker-end">
+                    <label>End time</label>
+                    <input type="time" id="time-end" class="time-input">
                 </div>
             </div>
 
-            <button class="submit-task-btn">ثبت تسک</button>
+            <!-- Category/Score Selection -->
+            <div class="form-group">
+                <label>Category</label>
+                <div class="category-buttons">
+                    <button class="category-btn score-1" data-score="1">Score 1</button>
+                    <button class="category-btn score-2" data-score="2">Score 2</button>
+                    <button class="category-btn score-3" data-score="3">Score 3</button>
+                </div>
+            </div>
+
+            <button class="submit-task-btn">Create New Task</button>
         </div>
     </div>
 
-    <!-- Daily Tasks Overlay -->
-    <div class="daily-tasks-overlay" id="dailyTasksOverlay">
-        <div class="daily-tasks-content">
-            <div class="daily-tasks-header">
-                <h3>تسک‌های <span class="selected-date"></span></h3>
-                <button class="close-overlay">&times;</button>
+    <!-- Edit User Modal -->
+    <div id="editUserModal" class="modal">
+        <div class="modal-content">
+            <h2>ویرایش کاربر</h2>
+            <div class="form-group">
+                <input type="hidden" id="edit-user-id">
+                <label for="edit-user-name">نام کاربر:</label>
+                <input type="text" id="edit-user-name" required>
+                <label for="edit-user-filter">فیلتر (برچسب) کاربر:</label>
+                <input type="text" id="edit-user-filter" style="width: 100%; direction: ltr;">
             </div>
-            <div class="daily-tasks-list">
-                <!-- Tasks will be populated here -->
-            </div>
-            <div class="daily-tasks-summary">
-                <div class="summary-item">
-                    <span class="label">کل تسک‌ها:</span>
-                    <span class="total-count">0</span>
-                </div>
-                <div class="summary-item">
-                    <span class="label">تکمیل شده:</span>
-                    <span class="completed-count">0</span>
-                </div>
-                <div class="summary-item">
-                    <span class="label">در انتظار:</span>
-                    <span class="pending-count">0</span>
-                </div>
+            <div class="modal-actions">
+                <button id="saveEditUserBtn">ذخیره</button>
+                <button id="cancelEditUserBtn">انصراف</button>
             </div>
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
+        // Enable detailed error logging
+        window.onerror = function(message, source, lineno, colno, error) {
+            console.error('Global error:', { message, source, lineno, colno, error });
+            return false;
+        };
+        
+        // Initialize Supabase client
+        const supabaseUrl = 'https://lholzspyazziknxqopmi.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxob2x6c3B5YXp6aWtueHFvcG1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIwMjc0MTAsImV4cCI6MjA1NzYwMzQxMH0.uku06OF-WapBhuV-A_rJBXu3x24CKKkSTM0SnmPIOOE';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        
         // Check authentication status
         async function checkAuth() {
             try {
-                const response = await fetch('/api/check-auth');
-                const data = await response.json();
+                console.log('Checking authentication...');
+                const { data: { user }, error } = await supabase.auth.getUser();
                 
-                if (!data.authenticated) {
-                    // Redirect to login page if not authenticated
-                    window.location.href = '/login';
+                if (error) {
+                    console.error('Error checking auth:', error);
+                    window.location.href = '/login.html';
+                    return;
+                }
+                
+                if (user) {
+                    console.log('User authenticated:', user);
+                    const username = user.user_metadata.username || user.email;
+                    document.getElementById('username').textContent = username;
                 } else {
-                    // Update UI with user information
-                    document.getElementById('username').textContent = data.user.username;
+                    console.log('No user logged in, redirecting to login');
+                    window.location.href = '/login.html';
                 }
             } catch (error) {
-                console.error('Auth check error:', error);
-                window.location.href = '/login';
+                console.error('Error checking auth:', error);
+                window.location.href = '/login.html';
             }
         }
-
-        // Handle logout
-        document.getElementById('logout-btn').addEventListener('click', () => {
-            window.location.href = '/logout';
+        
+        // Logout function
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            try {
+                await supabase.auth.signOut();
+                window.location.href = '/login.html';
+            } catch (error) {
+                console.error('Error signing out:', error);
+            }
         });
-
+        
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
-            checkAuth()
+            checkAuth();
         });
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script>
-        const { createClient } = supabase;
-    </script>
+    <!-- Flatpickr JS -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <!-- Correctly include fa.js as a script -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/fa.js"></script> 
     <script src="app.js"></script>
 </body>
 </html>
