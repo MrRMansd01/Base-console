@@ -164,15 +164,14 @@ body {
 
 /* Restore Task Count Style */
 .task-count {
-    background: rgba(255, 255, 255, 0.2); /* Restore background */
+    background: rgb(201 217 216); /* Restore background */
     padding: 0.2rem 0.5rem; /* Restore padding */
     border-radius: 10px; /* Restore border-radius */
     font-size: 0.8rem;
     min-width: 40px;
     text-align: center;
-    color: white; /* Ensure text is white */
+    color: rgb(0, 0, 0); /* Ensure text is white */
     white-space: nowrap; 
-    margin-left: 10px; /* Space between count and actions (RTL) */
 }
 
 .loading-users, .error-message, .no-users {
@@ -453,7 +452,6 @@ body {
 .task-count {
     white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis;
     max-width: 100px; /* Adjust as needed */
     display: inline-block; 
     vertical-align: middle; 

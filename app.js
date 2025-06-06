@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     const dayDisplayElement = document.querySelector('.date-display .day');
     const fullDateDisplayElement = document.querySelector('.date-display .full-date');
     // Add new references for filters, clear button, and stats
-        const filterButtons = document.querySelectorAll('.filter-btn');
+    
     const clearCompletedBtn = document.querySelector('.clear-completed-btn');
     const statsCompletedElement = document.querySelector('.stats .stat-card:nth-child(1) .stat-number');
     const statsPendingElement = document.querySelector('.stats .stat-card:nth-child(2) .stat-number');
@@ -163,6 +163,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
             // Highlight the correct user in the sidebar
             const usersContainer = document.getElementById('users-container');
+    const filterButtons = document.querySelectorAll('.filter-btn');
             document.querySelectorAll('.user-item').forEach(item => {
                 item.classList.remove('selected');
             });
@@ -584,9 +585,13 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     // --- Helper Function to Format Date --- 
     function formatDateToYYYYMMDD(date) {
+        if (!(date instanceof Date) || isNaN(date.getTime())) {
+            console.error('تاریخ نامعتبر است:', date);
+            return null;
+        }
         const year = date.getFullYear();
-        const month = (date.getMonth() + 1).toString().padStart(2, '0'); // Months are 0-indexed
-        const day = date.getDate().toString().padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
     }
     
@@ -928,6 +933,25 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
     // --- End Delete User Profile Function ---
 
+    async function createTask(taskData) {
+        try {
+            const { data, error } = await supabase
+                .from('tasks')
+                .insert([taskData])
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            console.log('Task created successfully:', data);
+            return data;
+        } catch (error) {
+            console.error('Error creating task:', error);
+            alert('خطا در ایجاد تسک');
+            throw error;
+        }
+    }
+
     // --- End of Function Definitions ---
 
     try {
@@ -1062,46 +1086,116 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
         // --- End Flatpickr Initialization ---
 
+        // Event listener for category buttons (from plan)
+        categoryButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                categoryButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                selectedScore = parseInt(btn.getAttribute('data-score'));
+            });
+        });
+
+        // --- Add Event Listeners for Filter Buttons ---
+        filterButtons.forEach(button => {
+            button.addEventListener('click', async () => {
+                filterButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                currentFilter = button.dataset.filter;
+                console.log(`Filter changed to: ${currentFilter}`); // For debugging
+                const { data: { user } } = await supabase.auth.getUser();
+                if (selectedUserId && user) {
+                    const targetUserName = document.querySelector(`.user-item[data-user-id="${selectedUserId}"] .user-name`)?.textContent || user.email;
+                    await loadTasksForUser(selectedUserId, targetUserName, isAdmin, currentFilter);
+                } else if (user) {
+                    // If no user is selected (e.g., on initial load or if selection is cleared)
+                    // Load tasks for the current logged-in user
+                    await loadTasksForUser(user.id, userNameElement.textContent, isAdmin, currentFilter);
+                }
+            });
+        });
+        // --- End Filter Button Event Listeners ---
+
         // Add event listener for add task button
         addTaskBtn?.addEventListener('click', () => showTaskModal());
+
+        // --- Add Event Listener for User Search Input ---
+        userSearchInput?.addEventListener('input', (event) => {
+            const searchTerm = event.target.value.toLowerCase();
+            searchUsers(searchTerm);
+        });
+        // --- End User Search Input Event Listener ---
 
         // ---- Updated Submit Task Listener (Handles ADD and EDIT) ----
         submitTaskBtn?.addEventListener('click', async () => {
             const taskTitle = taskTitleInput?.value.trim();
-            if (!taskTitle) return alert('لطفا عنوان تسک را وارد کنید');
+            if (!taskTitle) {
+                alert('لطفا عنوان تسک را وارد کنید');
+                return;
+            }
             
             if (!(selectedDateObject instanceof Date) || isNaN(selectedDateObject.getTime())) {
-                console.error("Invalid date object before submit");
-                alert("تاریخ انتخاب شده معتبر نیست.");
-                selectedDateObject = new Date(); // Reset
+                alert('لطفا تاریخ معتبر انتخاب کنید');
+                return;
             }
-            const formattedDate = formatDateToYYYYMMDD(selectedDateObject); 
+
+            const formattedDate = formatDateToYYYYMMDD(selectedDateObject);
+            if (!formattedDate) {
+                alert('خطا در تنظیم تاریخ');
+                return;
+            }
+
             const targetUserId = selectedUserId || user.id;
+            if (!targetUserId) {
+                alert('خطا: شناسه کاربر نامعتبر است');
+                return;
+            }
 
             const taskData = {
-            title: taskTitle,
+                title: taskTitle,
                 date: formattedDate,
-                time_start: timeStartInput.value || null, // Use null if empty for DB
-                time_end: timeEndInput.value || null, // Use null if empty for DB
-                color: selectedScore.toString(),
-            updated_at: new Date().toISOString()
-                // user_id and created_at are handled differently for add/edit
+                time_start: timeStartInput?.value || null,
+                time_end: timeEndInput?.value || null,
+                color: selectedScore, // Add color property
+                user_id: targetUserId,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
             };
 
             try {
                 if (editingTaskId) {
-                    // --- EDIT MODE --- 
-                    console.log(`[submitTaskBtn] Editing task with ID: ${editingTaskId}`);
-                    await updateTaskStatus(editingTaskId, true); // Mark task as completed
-                    await updateTaskStatus(editingTaskId, false); // Mark task as incomplete
-                    await loadTasksForUser(selectedUserId, userNameElement.textContent, isAdmin, currentFilter);
+                    // When editing, update the task with new values from the modal.
+                    console.log(`Updating task with ID: ${editingTaskId}`);
+                    const { error: updateError } = await supabase
+                        .from('tasks')
+                        .update({
+                            title: taskTitle,
+                            date: formattedDate,
+                            time_start: timeStartInput?.value || null,
+                            time_end: timeEndInput?.value || null,
+                            color: selectedScore, // Update color property
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', editingTaskId);
+
+                    if (updateError) throw updateError;
+
+                    hideTaskModal();
+
+                    // Reload tasks for the currently selected user, maintaining the current filter
+                    const { data: { user } } = await supabase.auth.getUser();
+                    const targetUserName = document.querySelector(`.user-item[data-user-id="${selectedUserId}"] .user-name`)?.textContent || user?.email;
+                    if(selectedUserId) {
+                        await loadTasksForUser(selectedUserId, targetUserName, isAdmin, currentFilter);
+                    }
+
                 } else {
-                    // --- ADD MODE --- 
-                    console.log(`[submitTaskBtn] Adding new task with data:`, taskData);
+                    console.log('افزودن تسک جدید:', taskData);
                     await createTask(taskData);
+                    hideTaskModal();
+                    await loadTasksForUser(selectedUserId, userNameElement.textContent, isAdmin, currentFilter);
                 }
-    } catch (error) {
-                console.error('Error handling task submission:', error);
+            } catch (error) {
+                console.error('خطا در ثبت تسک:', error);
                 alert('خطا در ثبت تسک');
             }
         });
