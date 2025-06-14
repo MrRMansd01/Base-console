@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Flatpickr CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 </head>
 <body>
@@ -18,13 +17,16 @@
                     <span class="task-count-number">0</span>
                     <span class="task-count-text">تسک</span>
                 </div>
-                <button class="add-task-btn">افزودن تسک جدید</button>
-                <button class="clear-completed-btn">حذف تکمیل شده‌ها</button>
+                <div class="header-actions">
+                    <button class="excel-upload-btn" id="excelUploadBtn" title="آپلود از اکسل">📝</button>
+                    <input type="file" id="excelFileInput" accept=".xlsx, .xls" style="display: none;">
+                    <button class="add-task-btn">افزودن تسک جدید</button>
+                    <button class="clear-completed-btn">حذف تکمیل شده‌ها</button>
+                </div>
             </div>
             
             <div class="tasks-container">
-                <!-- Tasks will be dynamically added here -->
-            </div>
+                </div>
 
             <div class="task-filters">
                 <button class="filter-btn" data-filter="incomplete">در حال انجام</button>
@@ -62,28 +64,23 @@
             <div class="users-list">
                 <h3>کاربران</h3>
                 <ul id="users-container">
-                    <!-- لیست کاربران به صورت پویا اینجا اضافه می‌شود -->
                     <li class="loading-users">در حال بارگذاری کاربران...</li>
                 </ul>
             </div>
         </div>
     </div>
 
-    <!-- Task Creation Modal -->
     <div id="taskModal" class="modal">
         <div class="modal-content">
             <h2>New Task</h2>
             
-            <!-- Title Input -->
             <div class="form-group">
                 <label>Title</label>
                 <input type="text" id="task-title" class="task-input" placeholder="Enter task title...">
             </div>
 
-            <!-- Date Picker -->
             <div class="form-group">
                 <label>Date</label>
-                <!-- Wrap input and button for Flatpickr wrap:true -->
                 <div class="flatpickr-wrapper" style="position: relative;">
                     <input type="text" id="task-date" class="date-input" placeholder="انتخاب تاریخ..." data-input>
                     <button class="calendar-btn" title="تقویم" data-toggle>
@@ -92,7 +89,6 @@
                 </div>
             </div>
 
-            <!-- Time Pickers -->
             <div class="form-group time-pickers">
                 <div class="time-picker-start">
                     <label>Start time</label>
@@ -104,7 +100,6 @@
                 </div>
             </div>
 
-            <!-- Category/Score Selection -->
             <div class="form-group">
                 <label>Category</label>
                 <div class="category-buttons">
@@ -118,7 +113,6 @@
         </div>
     </div>
 
-    <!-- Edit User Modal -->
     <div id="editUserModal" class="modal">
         <div class="modal-content">
             <h2>ویرایش کاربر</h2>
@@ -190,10 +184,9 @@
             checkAuth();
         });
     </script>
-    <!-- Flatpickr JS -->
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <!-- Correctly include fa.js as a script -->
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/fa.js"></script> 
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
