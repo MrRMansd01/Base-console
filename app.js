@@ -802,11 +802,24 @@ document.addEventListener('DOMContentLoaded', async function() {
                             formattedDate = formatDateToYYYYMMDD(new Date()); // Default to today
                         }
 
+                        // Extract time from Excel time format
+                        const formatExcelTime = (excelTime) => {
+                            if (!excelTime) return null;
+                            if (typeof excelTime === 'string') return excelTime; // Already in string format
+                            if (excelTime instanceof Date) {
+                                // Extract only the time part (HH:MM)
+                                const hours = excelTime.getHours().toString().padStart(2, '0');
+                                const minutes = excelTime.getMinutes().toString().padStart(2, '0');
+                                return `${hours}:${minutes}`;
+                            }
+                            return null;
+                        };
+
                         tasksToInsert.push({
                             title: title,
                             date: formattedDate,
-                            time_start: row.time_start || null,
-                            time_end: row.time_end || null,
+                            time_start: formatExcelTime(row.time_start),
+                            time_end: formatExcelTime(row.time_end),
                             color: row.color ? parseInt(row.color) : 1,
                             is_completed: false,
                             user_id: targetUserId,
