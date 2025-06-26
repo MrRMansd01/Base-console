@@ -29,6 +29,11 @@ document.addEventListener('DOMContentLoaded', async function() {
     const dayDisplayElement = document.querySelector('.date-display .day');
     const fullDateDisplayElement = document.querySelector('.date-display .full-date');
     
+    // --- Hamburger Menu Elements ---
+    const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.getElementById('overlay');
+
     // --- NEW: Excel Upload Elements ---
     const excelUploadBtn = document.getElementById('excelUploadBtn');
     const excelFileInput = document.getElementById('excelFileInput');
@@ -47,9 +52,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     const saveEditUserBtn = document.getElementById('saveEditUserBtn');
     const cancelEditUserBtn = document.getElementById('cancelEditUserBtn');
     
-    // --- Function Definitions FIRST --- 
-    // (Move all function definitions here: loadUsers, loadTasksForUser, etc.)
-
     async function loadTasksForUser(userId, userName, isAdminFlag, filter = 'all') {
         const tasksContainer = document.querySelector('.tasks-container');
         try {
@@ -363,6 +365,12 @@ document.addEventListener('DOMContentLoaded', async function() {
                     userElement.classList.add('selected');
                     selectedUserId = userProfile.id;
                     loadTasksForUser(userProfile.id, userProfile.username || userProfile.email, isAdminFlag, userProfile.filter || currentFilter);
+                    
+                    // Close sidebar on mobile after selection
+                    if (window.innerWidth <= 992) {
+                        sidebar.classList.remove('open');
+                        overlay.classList.remove('visible');
+                    }
                 });
 
                 const dotsBtn = userElement.querySelector('.dots-btn');
@@ -674,8 +682,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
 
-    // --- End of Function Definitions ---
-
     try {
         if (!window.supabase) {
             alert('خطا در بارگذاری کتابخانه Supabase. لطفا صفحه را دوباره بارگذاری کنید.');
@@ -712,7 +718,12 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
         }
         
-        userNameElement.textContent = profile?.name || user.email;
+        if (userNameElement) {
+            userNameElement.textContent = profile?.name || user.email;
+        } else {
+            console.error("Error: Could not find the HTML element with id='username' to display the user's name.");
+        }
+
         isAdmin = user.id === ADMIN_ID;
         await loadUsers(user, isAdmin);
         
@@ -755,7 +766,6 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         userSearchInput?.addEventListener('input', (event) => searchUsers(event.target.value.toLowerCase()));
         
-        // --- NEW: EXCEL UPLOAD EVENT LISTENERS ---
         excelUploadBtn?.addEventListener('click', () => {
             excelFileInput.click();
         });
@@ -799,15 +809,13 @@ document.addEventListener('DOMContentLoaded', async function() {
                         if (row.date && row.date instanceof Date && !isNaN(row.date)) {
                             formattedDate = formatDateToYYYYMMDD(row.date);
                         } else {
-                            formattedDate = formatDateToYYYYMMDD(new Date()); // Default to today
+                            formattedDate = formatDateToYYYYMMDD(new Date());
                         }
-
-                        // Extract time from Excel time format
+                        
                         const formatExcelTime = (excelTime) => {
                             if (!excelTime) return null;
-                            if (typeof excelTime === 'string') return excelTime; // Already in string format
+                            if (typeof excelTime === 'string') return excelTime;
                             if (excelTime instanceof Date) {
-                                // Extract only the time part (HH:MM)
                                 const hours = excelTime.getHours().toString().padStart(2, '0');
                                 const minutes = excelTime.getMinutes().toString().padStart(2, '0');
                                 return `${hours}:${minutes}`;
@@ -850,7 +858,6 @@ document.addEventListener('DOMContentLoaded', async function() {
             };
             reader.readAsArrayBuffer(file);
         });
-        // --- END NEW LISTENERS ---
 
         submitTaskBtn?.addEventListener('click', async () => {
             const taskTitle = taskTitleInput?.value.trim();
@@ -903,6 +910,18 @@ document.addEventListener('DOMContentLoaded', async function() {
                 console.error('خطا در ثبت تسک:', error);
                 alert('خطا در ثبت تسک');
             }
+        });
+
+        // --- Sidebar Toggle Logic ---
+        sidebarToggleBtn?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            sidebar.classList.add('open');
+            overlay.classList.add('visible');
+        });
+
+        overlay?.addEventListener('click', () => {
+            sidebar.classList.remove('open');
+            overlay.classList.remove('visible');
         });
 
     } catch (error) {

@@ -18,6 +18,9 @@
                     <span class="task-count-text">تسک</span>
                 </div>
                 <div class="header-actions">
+                    <button id="sidebar-toggle-btn" class="sidebar-toggle-btn">
+                        <i class="fas fa-users"></i>
+                    </button>
                     <button class="excel-upload-btn" id="excelUploadBtn" title="آپلود از اکسل">📝</button>
                     <input type="file" id="excelFileInput" accept=".xlsx, .xls" style="display: none;">
                     <button class="add-task-btn">افزودن تسک جدید</button>
@@ -129,6 +132,8 @@
             </div>
         </div>
     </div>
+    
+    <div id="overlay" class="overlay"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
