@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     // --- 2. DOM Element References ---
     const taskModal = document.getElementById('taskModal');
-    const addTaskBtn = document.querySelector('.add-task-btn');
+    const addTaskBtn = document.getElementById('open-task-modal-btn');
     const submitTaskBtn = document.querySelector('.submit-task-btn');
     const taskTitleInput = document.getElementById('task-title');
     const taskDateInput = document.getElementById('task-date');
@@ -51,7 +51,14 @@ document.addEventListener('DOMContentLoaded', async function() {
     const editUserFilterInput = document.getElementById('edit-user-filter');
     const saveEditUserBtn = document.getElementById('saveEditUserBtn');
     const cancelEditUserBtn = document.getElementById('cancelEditUserBtn');
-    
+    const viewProfileBtn = document.getElementById('view-profile-btn');
+    const studentDetailsModal = document.getElementById('studentDetailsModal');
+    const saveStudentDetailsBtn = document.getElementById('saveStudentDetailsBtn');
+    const cancelStudentDetailsBtn = document.getElementById('cancelStudentDetailsBtn');
+    const detailsUserIdInput = document.getElementById('details-user-id');
+    const detailInputs = studentDetailsModal.querySelectorAll('.task-input, textarea');
+
+
     async function loadTasksForUser(userId, userName, isAdminFlag, filter = 'all') {
         const tasksContainer = document.querySelector('.tasks-container');
         try {
@@ -364,9 +371,16 @@ document.addEventListener('DOMContentLoaded', async function() {
                     document.querySelectorAll('.user-item').forEach(item => item.classList.remove('selected'));
                     userElement.classList.add('selected');
                     selectedUserId = userProfile.id;
+                    const loggedInUserRole = window.userRole;
+                    const selectedUserRole = userTaskMap.get(userProfile.id)?.role;
+
+                    if ((loggedInUserRole === 'admin' || loggedInUserRole === 'teacher' || loggedInUserRole === 'consultant') && selectedUserRole === 'student') {
+                        viewProfileBtn.style.display = 'inline-block';
+                    } else {
+                        viewProfileBtn.style.display = 'none';
+                    }
                     loadTasksForUser(userProfile.id, userProfile.username || userProfile.email, isAdminFlag, userProfile.filter || currentFilter);
                     
-                    // Close sidebar on mobile after selection
                     if (window.innerWidth <= 992) {
                         sidebar.classList.remove('open');
                         overlay.classList.remove('visible');
@@ -447,11 +461,11 @@ document.addEventListener('DOMContentLoaded', async function() {
             resetTaskForm(); 
         }
         
-        taskModal.style.display = 'block';
+        taskModal.classList.add('is-open');
     }
     
     function hideTaskModal() {
-        taskModal.style.display = 'none';
+        taskModal.classList.remove('is-open');
         editingTaskId = null;
         resetTaskForm(); 
     }
@@ -568,6 +582,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         const userId = document.getElementById('edit-user-id').value;
         const newName = document.getElementById('edit-user-name').value;
         const newFilter = document.getElementById('edit-user-filter').value;
+        const newUserRole = document.getElementById('edit-user-role').value;
 
         if (!userId || !newName) {
             alert('لطفا تمام فیلدهای ضروری را پر کنید');
@@ -575,7 +590,16 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
             
         try {
-            const updates = { name: newName.trim(), filter: newFilter, updated_at: new Date().toISOString() };
+            const updates = { 
+                name: newName.trim(), 
+                filter: newFilter, 
+                updated_at: new Date().toISOString() 
+            };
+
+            if (isAdmin) {
+                updates.role = newUserRole;
+            }
+
             const { error } = await supabase.from('profiles').update(updates).eq('id', userId);
             if (error) throw error;
             
@@ -583,7 +607,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             if (verifyData) {
                 const currentUserData = userTaskMap.get(userId);
                 if (currentUserData) {
-                    userTaskMap.set(userId, { ...currentUserData, name: verifyData.name, filter: verifyData.filter });
+                    userTaskMap.set(userId, { ...currentUserData, name: verifyData.name, filter: verifyData.filter, role: verifyData.role });
                 }
             }
 
@@ -601,6 +625,15 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     function openEditUserModal(userId) {
+        const editUserRoleGroup = document.getElementById('edit-user-role-group');
+        const editUserRoleSelect = document.getElementById('edit-user-role');
+
+        if (isAdmin) {
+            editUserRoleGroup.style.display = 'block';
+        } else {
+            editUserRoleGroup.style.display = 'none';
+        }
+
         supabase.from('profiles').select('*').eq('id', userId).single().then(({ data: freshData, error }) => {
             if (error) {
                 console.error('Error fetching fresh user data:', error);
@@ -613,27 +646,18 @@ document.addEventListener('DOMContentLoaded', async function() {
                 editUserFilterInput.value = freshData?.filter || '';
                 editUserFilterInput.style.direction = 'ltr';
             }
-            if (editUserModal) editUserModal.style.display = 'block';
+            
+            if (isAdmin && freshData?.role) {
+                editUserRoleSelect.value = freshData.role;
+            }
 
-            const newSaveBtn = saveEditUserBtn.cloneNode(true);
-            saveEditUserBtn.parentNode.replaceChild(newSaveBtn, saveEditUserBtn);
-            newSaveBtn.addEventListener('click', async () => await saveUserEdit());
+            if (editUserModal) editUserModal.classList.add('is-open');
 
-            const newCancelBtn = cancelEditUserBtn.cloneNode(true);
-            cancelEditUserBtn.parentNode.replaceChild(newCancelBtn, cancelEditUserBtn);
-            newCancelBtn.addEventListener('click', () => hideEditUserModal());
-
-            editUserModal.onclick = (event) => {
-                if (event.target === editUserModal) hideEditUserModal();
-            };
         });
     }
 
     function hideEditUserModal() {
-        if (editUserModal) editUserModal.style.display = 'none';
-        if (editUserIdInput) editUserIdInput.value = '';
-        if (editUserNameInput) editUserNameInput.value = '';
-        if (editUserFilterInput) editUserFilterInput.value = '';
+        if (editUserModal) editUserModal.classList.remove('is-open');
     }
 
     async function deleteUserProfile(userIdToDelete, userName) {
@@ -688,8 +712,8 @@ document.addEventListener('DOMContentLoaded', async function() {
             return;
         }
         
-        const supabaseUrl = process.env.SUPABASE_URL;
-        const supabaseKey = process.env.SUPABASE_KEY;
+        const supabaseUrl = 'https://lholzspyazziknxqopmi.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxob2x6c3B5YXp6aWtueHFvcG1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIwMjc0MTAsImV4cCI6MjA1NzYwMzQxMH0.uku06OF-WapBhuV-A_rJBXu3x24CKKkSTM0SnmPIOOE';
         supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
         
         let user, authError;
@@ -725,6 +749,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
 
         isAdmin = user.id === ADMIN_ID;
+        window.userRole = profile.role; 
         await loadUsers(user, isAdmin);
         
         const flatpickrWrapper = document.querySelector('.flatpickr-wrapper'); 
@@ -928,4 +953,107 @@ document.addEventListener('DOMContentLoaded', async function() {
         console.error('Error initializing app:', error);
         alert('خطا در بارگذاری برنامه');
     }
+
+    // Modal handling functions
+    async function openStudentDetailsModal() {
+        if (!selectedUserId) return;
+
+        const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', selectedUserId)
+            .single();
+
+        if (error) {
+            alert('خطا در دریافت اطلاعات پروفایل.');
+            console.error(error);
+            return;
+        }
+
+        document.getElementById('details-fullname').value = profile.full_name || '';
+        document.getElementById('details-father-name').value = profile.father_name || '';
+        document.getElementById('details-mother-name').value = profile.mother_name || '';
+        document.getElementById('details-father-phone').value = profile.father_phone || '';
+        document.getElementById('details-mother-phone').value = profile.mother_phone || '';
+        document.getElementById('details-home-phone').value = profile.home_phone || '';
+        document.getElementById('details-description').value = profile.description || '';
+        detailsUserIdInput.value = profile.id;
+
+        if (window.userRole === 'admin') {
+            saveStudentDetailsBtn.style.display = 'inline-block';
+            detailInputs.forEach(input => input.readOnly = false);
+        } else {
+            saveStudentDetailsBtn.style.display = 'none';
+            detailInputs.forEach(input => input.readOnly = true);
+        }
+
+        studentDetailsModal.classList.add('is-open');
+    }
+
+    function closeStudentDetailsModal() {
+        studentDetailsModal.classList.remove('is-open');
+    }
+
+    async function saveStudentDetails() {
+        const userId = detailsUserIdInput.value;
+        if (!userId) return;
+
+        const updates = {
+            full_name: document.getElementById('details-fullname').value,
+            father_name: document.getElementById('details-father-name').value,
+            mother_name: document.getElementById('details-mother-name').value,
+            father_phone: document.getElementById('details-father-phone').value,
+            mother_phone: document.getElementById('details-mother-phone').value,
+            home_phone: document.getElementById('details-home-phone').value,
+            description: document.getElementById('details-description').value,
+            updated_at: new Date().toISOString()
+        };
+
+        const { error } = await supabase
+            .from('profiles')
+            .update(updates)
+            .eq('id', userId);
+
+        if (error) {
+            alert('خطا در ذخیره تغییرات.');
+            console.error(error);
+        } else {
+            alert('تغییرات با موفقیت ذخیره شد.');
+            closeStudentDetailsModal();
+        }
+    }
+
+    // Event Listeners
+    if(viewProfileBtn) viewProfileBtn.addEventListener('click', openStudentDetailsModal);
+    if(cancelStudentDetailsBtn) cancelStudentDetailsBtn.addEventListener('click', closeStudentDetailsModal);
+    if(saveStudentDetailsBtn) saveStudentDetailsBtn.addEventListener('click', saveStudentDetails);
+    if(saveEditUserBtn) saveEditUserBtn.addEventListener('click', saveUserEdit);
+    if(cancelEditUserBtn) cancelEditUserBtn.addEventListener('click', hideEditUserModal);
+
+
+    window.addEventListener('click', (event) => {
+        if (event.target == studentDetailsModal) {
+            closeStudentDetailsModal();
+        }
+        if (event.target == editUserModal) {
+            hideEditUserModal();
+        }
+        if (event.target == taskModal) {
+            hideTaskModal();
+        }
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            if (studentDetailsModal.classList.contains('is-open')) {
+                closeStudentDetailsModal();
+            }
+            if (editUserModal.classList.contains('is-open')) {
+                hideEditUserModal();
+            }
+            if (taskModal.classList.contains('is-open')) {
+                hideTaskModal();
+            }
+        }
+    });
 });

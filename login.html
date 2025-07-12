@@ -312,8 +312,8 @@
         <div class="form-tab active" id="login-form">
             <form id="login-form-element">
                 <div class="form-group">
-                    <label for="login-username">ایمیل</label>
-                    <input type="email" id="login-username" name="username" class="form-control" placeholder="ایمیل خود را وارد کنید" required>
+                    <label for="login-name">ایمیل</label>
+                    <input type="email" id="login-name" name="name" class="form-control" placeholder="ایمیل خود را وارد کنید" required>
                 </div>
                 
                 <div class="form-group">
@@ -330,8 +330,8 @@
         <div class="form-tab" id="register-form">
             <form id="register-form-element">
                 <div class="form-group">
-                    <label for="register-username">نام کاربری</label>
-                    <input type="text" id="register-username" name="username" class="form-control" placeholder="یک نام کاربری انتخاب کنید" required>
+                    <label for="register-name">نام کاربری</label>
+                    <input type="text" id="register-name" name="name" class="form-control" placeholder="یک نام کاربری انتخاب کنید" required>
                 </div>
                 
                 <div class="form-group">
@@ -434,20 +434,20 @@
         document.getElementById('login-form-element').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            const username = document.getElementById('login-username').value;
+            const name = document.getElementById('login-name').value;
             const password = document.getElementById('login-password').value;
             
-            if (!username || !password) {
+            if (!name || !password) {
                 showMessage('لطفا ایمیل و رمز عبور را وارد کنید.', 'error');
                 return;
             }
             
             try {
-                console.log('Attempting login with:', { email: username });
+                console.log('Attempting login with:', { email: name });
                 
                 // Sign in with Supabase
                 const { data, error } = await supabaseClient.auth.signInWithPassword({
-                    email: username,
+                    email: name,
                     password: password
                 });
                 
@@ -479,17 +479,17 @@
         document.getElementById('register-form-element').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            const username = document.getElementById('register-username').value;
+            const name = document.getElementById('register-name').value;
             const email = document.getElementById('register-email').value;
             const password = document.getElementById('register-password').value;
             
-            if (!username || !email || !password) {
+            if (!name || !email || !password) {
                 showMessage('لطفا تمام فیلدها را پر کنید.', 'error');
                 return;
             }
             
             try {
-                console.log('Attempting registration with:', { email, username });
+                console.log('Attempting registration with:', { email, name });
                 
                 // Sign up with Supabase
                 const { data, error } = await supabaseClient.auth.signUp({
@@ -497,7 +497,7 @@
                     password: password,
                     options: {
                         data: {
-                            username: username
+                            name: name
                         }
                     }
                 });
@@ -517,7 +517,7 @@
                         .insert([
                             { 
                                 id: data.user.id,
-                                name: username,
+                                name: name,
                                 email: email,
                                 created_at: new Date().toISOString(),
                                 updated_at: new Date().toISOString()

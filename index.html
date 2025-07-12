@@ -10,7 +10,9 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 </head>
 <body>
+    <!-- Main container for the page layout -->
     <div class="container">
+        <!-- Main content area -->
         <div class="main-content">
             <div class="header">
                 <div class="task-count">
@@ -21,15 +23,23 @@
                     <button id="sidebar-toggle-btn" class="sidebar-toggle-btn">
                         <i class="fas fa-users"></i>
                     </button>
+                    
+                    <button id="view-profile-btn" style="display: none; background-color: #ff9800; padding: 0.8rem 1.5rem; border: none; border-radius: 8px; cursor: pointer; color: white; font-weight: 500;">
+                        مشاهده پروفایل دانش‌آموز
+                    </button>
+                    
                     <button class="excel-upload-btn" id="excelUploadBtn" title="آپلود از اکسل">📝</button>
                     <input type="file" id="excelFileInput" accept=".xlsx, .xls" style="display: none;">
-                    <button class="add-task-btn">افزودن تسک جدید</button>
+                    
+                    <button class="add-task-btn" id="open-task-modal-btn">افزودن تسک جدید</button>
+                    
                     <button class="clear-completed-btn">حذف تکمیل شده‌ها</button>
                 </div>
             </div>
             
             <div class="tasks-container">
-                </div>
+                <!-- Tasks will be dynamically inserted here -->
+            </div>
 
             <div class="task-filters">
                 <button class="filter-btn" data-filter="incomplete">در حال انجام</button>
@@ -56,6 +66,7 @@
                 </div>
             </div>
         </div>
+        <!-- Sidebar for user list -->
         <div class="sidebar">
             <div class="user-info">
                 <h2 id="username">کاربر</h2>
@@ -73,17 +84,20 @@
         </div>
     </div>
 
+    <!-- MODALS SECTION: All modals should be direct children of the body tag -->
+
+    <!-- Task Modal -->
     <div id="taskModal" class="modal">
         <div class="modal-content">
-            <h2>New Task</h2>
+            <h2>تسک جدید</h2>
             
             <div class="form-group">
-                <label>Title</label>
-                <input type="text" id="task-title" class="task-input" placeholder="Enter task title...">
+                <label>عنوان</label>
+                <input type="text" id="task-title" class="task-input" placeholder="عنوان تسک را وارد کنید...">
             </div>
 
             <div class="form-group">
-                <label>Date</label>
+                <label>تاریخ</label>
                 <div class="flatpickr-wrapper" style="position: relative;">
                     <input type="text" id="task-date" class="date-input" placeholder="انتخاب تاریخ..." data-input>
                     <button class="calendar-btn" title="تقویم" data-toggle>
@@ -94,17 +108,17 @@
 
             <div class="form-group time-pickers">
                 <div class="time-picker-start">
-                    <label>Start time</label>
+                    <label>زمان شروع</label>
                     <input type="time" id="time-start" class="time-input">
                 </div>
                 <div class="time-picker-end">
-                    <label>End time</label>
+                    <label>زمان پایان</label>
                     <input type="time" id="time-end" class="time-input">
                 </div>
             </div>
 
             <div class="form-group">
-                <label>Category</label>
+                <label>دسته بندی</label>
                 <div class="category-buttons">
                     <button class="category-btn score-1" data-score="1">Score 1</button>
                     <button class="category-btn score-2" data-score="2">Score 2</button>
@@ -112,10 +126,11 @@
                 </div>
             </div>
 
-            <button class="submit-task-btn">Create New Task</button>
+            <button class="submit-task-btn">افزودن تسک</button>
         </div>
     </div>
 
+    <!-- Edit User Modal -->
     <div id="editUserModal" class="modal">
         <div class="modal-content">
             <h2>ویرایش کاربر</h2>
@@ -126,50 +141,96 @@
                 <label for="edit-user-filter">فیلتر (برچسب) کاربر:</label>
                 <input type="text" id="edit-user-filter" style="width: 100%; direction: ltr;">
             </div>
+    
+            <div class="form-group" id="edit-user-role-group" style="display: none;">
+                <label for="edit-user-role">نقش کاربر:</label>
+                <select id="edit-user-role" class="form-control" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+                    <option value="student">دانش‌آموز</option>
+                    <option value="teacher">معلم</option>
+                    <option value="consultant">مشاور</option>
+                    <option value="admin">مدیر</option>
+                </select>
+            </div>
             <div class="modal-actions">
-                <button id="saveEditUserBtn">ذخیره</button>
-                <button id="cancelEditUserBtn">انصراف</button>
+                <button id="saveEditUserBtn" class="btn btn-save">ذخیره</button>
+                <button id="cancelEditUserBtn" class="btn btn-cancel">انصراف</button>
             </div>
         </div>
     </div>
     
+    <!-- Student Details Modal (Moved from header to here) -->
+    <div id="studentDetailsModal" class="modal">
+        <div class="modal-content">
+            <h2>پروفایل دانش‌آموز</h2>
+            <input type="hidden" id="details-user-id">
+            
+            <div class="form-group">
+                <label for="details-fullname">اسم کامل:</label>
+                <input type="text" id="details-fullname" class="task-input">
+            </div>
+            <div class="form-group">
+                <label for="details-father-name">اسم پدر:</label>
+                <input type="text" id="details-father-name" class="task-input">
+            </div>
+            <div class="form-group">
+                <label for="details-mother-name">اسم مادر:</label>
+                <input type="text" id="details-mother-name" class="task-input">
+            </div>
+            <div class="form-group">
+                <label for="details-father-phone">شماره پدر:</label>
+                <input type="text" id="details-father-phone" class="task-input" dir="ltr">
+            </div>
+            <div class="form-group">
+                <label for="details-mother-phone">شماره مادر:</label>
+                <input type="text" id="details-mother-phone" class="task-input" dir="ltr">
+            </div>
+            <div class="form-group">
+                <label for="details-home-phone">شماره خانه:</label>
+                <input type="text" id="details-home-phone" class="task-input" dir="ltr">
+            </div>
+            <div class="form-group">
+                <label for="details-description">توضیحات:</label>
+                <textarea id="details-description" class="task-input" rows="3"></textarea>
+            </div>
+            
+            <div class="modal-actions">
+                <button id="saveStudentDetailsBtn" class="btn btn-save" style="display: none;">ذخیره تغییرات</button>
+                <button id="cancelStudentDetailsBtn" class="btn btn-cancel">بستن</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay for sidebar on mobile -->
     <div id="overlay" class="overlay"></div>
 
+    <!-- SCRIPTS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // Enable detailed error logging
-        window.onerror = function(message, source, lineno, colno, error) {
-            console.error('Global error:', { message, source, lineno, colno, error });
-            return false;
-        };
+        // This inline script is for initial auth check and can be kept here
+        // or moved to app.js. It's fine here for now.
         
         // Initialize Supabase client
-        const supabaseUrl = process.env.SUPABASE_URL;
-        const supabaseKey = process.env.SUPABASE_KEY;
+        const supabaseUrl = 'https://lholzspyazziknxqopmi.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxob2x6c3B5YXp6aWtueHFvcG1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIwMjc0MTAsImV4cCI6MjA1NzYwMzQxMH0.uku06OF-WapBhuV-A_rJBXu3x24CKKkSTM0SnmPIOOE';
         const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
         
-        // Check authentication status
+        // Check authentication status on page load
         async function checkAuth() {
             try {
-                console.log('Checking authentication...');
                 const { data: { user }, error } = await supabase.auth.getUser();
                 
-                if (error) {
-                    console.error('Error checking auth:', error);
+                if (error || !user) {
+                    console.log('No user logged in or error, redirecting to login');
                     window.location.href = '/login.html';
                     return;
                 }
                 
-                if (user) {
-                    console.log('User authenticated:', user);
-                    const username = user.user_metadata.username || user.email;
-                    document.getElementById('username').textContent = username;
-                } else {
-                    console.log('No user logged in, redirecting to login');
-                    window.location.href = '/login.html';
-                }
+                console.log('User authenticated:', user);
+                const { data: profile } = await supabase.from('profiles').select('name').eq('id', user.id).single();
+                document.getElementById('username').textContent = profile?.name || user.email.split('@')[0];
+
             } catch (error) {
-                console.error('Error checking auth:', error);
+                console.error('Error in auth check:', error);
                 window.location.href = '/login.html';
             }
         }
@@ -184,7 +245,7 @@
             }
         });
         
-        // Initialize
+        // Initialize auth check when DOM is ready
         document.addEventListener('DOMContentLoaded', () => {
             checkAuth();
         });

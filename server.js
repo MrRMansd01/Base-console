@@ -9,14 +9,14 @@ const app = express();
 const users = [
     {
         id: 1,
-        username: 'admin',
+        name: 'admin',
         email: 'admin@example.com',
         // Plain password for testing only
         password: 'admin123'
     },
     {
         id: 2,
-        username: 'test',
+        name: 'test',
         email: 'test@example.com',
         // Plain password for testing only
         password: 'test123'
@@ -54,15 +54,15 @@ app.get('/login', (req, res) => {
 });
 
 app.post('/login', (req, res) => {
-    const { username, password } = req.body;
+    const { name, password } = req.body;
     
     // Simple validation
-    if (!username || !password) {
+    if (!name || !password) {
         return res.status(400).json({ error: 'نام کاربری و رمز عبور الزامی است' });
     }
     
     // For demo purposes, hardcoded credentials
-    if (username === 'admin' && password === 'admin123') {
+    if (name === 'admin' && password === 'admin123') {
         // Regenerate session to prevent session fixation
         req.session.regenerate(function(err) {
             if (err) {
@@ -72,7 +72,7 @@ app.post('/login', (req, res) => {
             // Store user info in session
             req.session.user = {
                 id: 1,
-                username: 'admin',
+                name: 'admin',
                 name: 'مدیر سیستم'
             };
             
@@ -102,10 +102,10 @@ app.get('/logout', (req, res) => {
 
 // Register route
 app.post('/register', async (req, res) => {
-    const { username, email, password } = req.body;
+    const { name, email, password } = req.body;
     
     // Simple validation
-    if (!username || !email || !password) {
+    if (!name || !email || !password) {
         return res.status(400).json({ error: 'تمام فیلدها الزامی هستند' });
     }
     
