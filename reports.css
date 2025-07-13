@@ -1,0 +1,54 @@
+/* Styles for the reports page */
+.filter-section {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem; /* Increased gap */
+    align-items: flex-end;
+    margin-bottom: 2rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.filter-section .form-group {
+    flex: 1 1 200px; /* Allow items to grow and shrink */
+    min-width: 200px;
+}
+
+/* Ensure select elements have proper styling */
+.filter-section select {
+    width: 100%;
+    padding: 0.8rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1rem;
+    background-color: white;
+    font-family: 'Vazirmatn', sans-serif;
+}
+
+.filter-section .btn {
+    flex-shrink: 0; /* Prevent button from shrinking */
+}
+
+.chart-container {
+    position: relative;
+    height: 400px;
+    margin-bottom: 3rem;
+}
+
+.data-section .toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.data-section h3 {
+    margin: 0;
+}
+
+.export-buttons {
+    display: flex;
+    gap: 0.5rem;
+}

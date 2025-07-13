@@ -7,74 +7,82 @@ document.addEventListener('DOMContentLoaded', () => {
     const widgetsContainer = document.getElementById('dashboard-widgets-container');
     const logoutBtn = document.getElementById('logout-btn');
 
-    // تابع برای ساخت یک ویجت (کارت) در داشبورد
     function createWidget(title, icon, link) {
         const widget = document.createElement('a');
         widget.href = link;
         widget.className = 'widget-card';
-        widget.innerHTML = `
-            <i class="fas ${icon} widget-icon"></i>
-            <h3 class="widget-title">${title}</h3>
-        `;
+        widget.innerHTML = `<i class="fas ${icon} widget-icon"></i><h3 class="widget-title">${title}</h3>`;
         return widget;
     }
 
-    // تابع برای رندر کردن داشبورد بر اساس نقش کاربر
+
     function renderDashboard(role) {
-        widgetsContainer.innerHTML = ''; // پاک کردن حالت لودینگ
+        widgetsContainer.innerHTML = ''; 
 
-        // ویجت‌های مشترک
-        widgetsContainer.appendChild(createWidget('مدیریت وظایف', 'fa-tasks', '/index.html'));
-        widgetsContainer.appendChild(createWidget('پروفایل من', 'fa-user-circle', '#')); // لینک پروفایل را بعدا تکمیل می‌کنیم
+        const widgets = new Map();
+        const addWidget = (key, title, icon, link) => {
+            if (!widgets.has(key)) {
+                widgets.set(key, createWidget(title, icon, link));
+            }
+        };
 
-        // ویجت‌های اختصاصی بر اساس نقش
-        if (role === 'admin') {
-            widgetsContainer.appendChild(createWidget('مدیریت کاربران', 'fa-users-cog', '#'));
-            widgetsContainer.appendChild(createWidget('مدیریت درس‌ها', 'fa-book', '/subjects.html'));
-            widgetsContainer.appendChild(createWidget('مدیریت آزمون‌ها', 'fa-file-signature', '/exams.html'));
-        }
+        // --- افزودن ویجت‌ها بر اساس سطح دسترسی ---
+        addWidget('tasks', 'مدیریت وظایف', 'fa-tasks', '/index.html');
+        addWidget('profile', 'پروفایل من', 'fa-user-circle', '/profile.html');
 
-        if (role === 'teacher') {
-            widgetsContainer.appendChild(createWidget('ثبت نمرات', 'fa-edit', '#'));
-            widgetsContainer.appendChild(createWidget('گزارش کلاس', 'fa-chart-bar', '#'));
-        }
-
+        // ویجت‌های دانش‌آموز
         if (role === 'student') {
-            widgetsContainer.appendChild(createWidget('کارنامه من', 'fa-graduation-cap', '#'));
+            // This line is updated
+            addWidget('report_card', 'کارنامه من', 'fa-graduation-cap', '/report-card.html');
         }
+
+        // ویجت‌های مشترک بین مدیر، معلم و مشاور
+        if (['admin', 'teacher', 'consultant'].includes(role)) {
+            addWidget('class_report', 'گزارش کلاس', 'fa-chart-bar', '/reports.html');
+            addWidget('enter_scores', 'ثبت نمرات', 'fa-edit', '/scores.html');
+        }
+        
+        // ویجت‌های مشترک بین مدیر و مشاور
+        if (['admin', 'consultant'].includes(role)) {
+            addWidget('manage_subjects', 'مدیریت درس‌ها', 'fa-book', '/subjects.html');
+            addWidget('manage_exams', 'مدیریت آزمون‌ها', 'fa-file-signature', '/exams.html');
+        }
+
+        // ویجت‌های اختصاصی مدیر
+        if (role === 'admin') {
+            addWidget('manage_users', 'مدیریت کاربران', 'fa-users-cog', '/users.html');
+        }
+
+        widgets.forEach(widget => {
+            widgetsContainer.appendChild(widget);
+        });
     }
 
-    // بررسی وضعیت احراز هویت و دریافت اطلاعات کاربر
+
     async function checkAuthAndLoadDashboard() {
         const { data: { user }, error: authError } = await supabase.auth.getUser();
-
         if (authError || !user) {
             window.location.href = '/login.html';
             return;
         }
-
         const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('name, role')
             .eq('id', user.id)
             .single();
-
         if (profileError) {
             console.error('Error fetching profile:', profileError);
             userNameDisplay.textContent = 'خطا در بارگذاری پروفایل';
             return;
         }
-        
         userNameDisplay.textContent = `خوش آمدید، ${profile.name || user.email}`;
         renderDashboard(profile.role);
     }
 
-    // رویداد کلیک برای دکمه خروج
     logoutBtn.addEventListener('click', async () => {
         await supabase.auth.signOut();
         window.location.href = '/login.html';
     });
 
-    // اجرای تابع اصلی
     checkAuthAndLoadDashboard();
 });
