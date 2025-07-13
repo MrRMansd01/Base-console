@@ -457,9 +457,8 @@
                 }
                 
                 console.log('Login successful:', data);
-                
+                window.location.href = '/home.html'; // <<<< این خط را تغییر دهید
                 // Redirect to main page on successful login
-                window.location.href = '/';
             } catch (error) {
                 console.error('Login error:', error);
                 

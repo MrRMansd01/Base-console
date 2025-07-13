@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مدیریت آزمون‌ها</title>
+    <link rel="stylesheet" href="subjects.css"> <!-- We can reuse subjects.css -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+</head>
+<body>
+    <div class="page-container">
+        <header class="page-header">
+            <h1>مدیریت آزمون‌ها</h1>
+            <a href="/home.html" class="back-to-dashboard-btn">
+                <i class="fas fa-arrow-left"></i> بازگشت به داشبورد
+            </a>
+        </header>
+
+        <main class="content-main">
+            <div class="toolbar">
+                <button id="add-exam-btn" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> افزودن آزمون جدید
+                </button>
+            </div>
+            <div class="table-container">
+                <table id="exams-table">
+                    <thead>
+                        <tr>
+                            <th>نام آزمون</th>
+                            <th>نام درس</th>
+                            <th>تاریخ آزمون</th>
+                            <th>عملیات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Exam rows will be dynamically inserted here -->
+                    </tbody>
+                </table>
+                <p id="loading-message">در حال بارگذاری آزمون‌ها...</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal for adding/editing exams -->
+    <div id="exam-modal" class="modal">
+        <div class="modal-content">
+            <h2 id="modal-title">افزودن آزمون جدید</h2>
+            <form id="exam-form">
+                <input type="hidden" id="exam-id">
+                <div class="form-group">
+                    <label for="exam-name">نام آزمون:</label>
+                    <input type="text" id="exam-name" required placeholder="مثال: میان‌ترم اول">
+                </div>
+                <div class="form-group">
+                    <label for="subject-select">درس:</label>
+                    <select id="subject-select" required>
+                        <option value="">انتخاب کنید...</option>
+                        <!-- Subject options will be dynamically inserted here -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="exam-date">تاریخ آزمون:</label>
+                    <input type="text" id="exam-date" required placeholder="تاریخ را انتخاب کنید">
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary">ذخیره</button>
+                    <button type="button" id="cancel-btn" class="btn btn-secondary">انصراف</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/fa.js"></script>
+    <script src="exams.js"></script>
+</body>
+</html>
