@@ -99,9 +99,11 @@ body {
     text-align: right;
 }
 
-#subjects-table th, #subjects-table td {
-    padding: 1rem;
+.table-container table th,
+.table-container table td {
+    padding: 1.2rem 1.5rem; /* افزایش فاصله افقی و عمودی */
     border-bottom: 1px solid var(--border-color);
+    white-space: nowrap; /* جلوگیری از شکستن متن و ایجاد فضای بیشتر */
 }
 
 #subjects-table th {

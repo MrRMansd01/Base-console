@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const exportAllBtn = document.getElementById('export-all-btn');
 
     let scoresChart;
-    let allScoresData = [];
+    let currentReportData = [];
 
     // Check user role
     async function checkAccessRole() {
@@ -34,15 +34,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Populate all filter dropdowns
     async function populateFilters() {
-        // Fetch students
         const { data: students } = await supabase.from('profiles').select('id, name').eq('role', 'student');
         if (students) students.forEach(s => studentFilter.add(new Option(s.name, s.id)));
 
-        // Fetch subjects
         const { data: subjects } = await supabase.from('subjects').select('id, name');
         if (subjects) subjects.forEach(s => subjectFilter.add(new Option(s.name, s.id)));
 
-        // Fetch exams
         const { data: exams } = await supabase.from('exams').select('id, name');
         if (exams) exams.forEach(e => examFilter.add(new Option(e.name, e.id)));
     }
@@ -52,54 +49,92 @@ document.addEventListener('DOMContentLoaded', () => {
         loadingMessage.textContent = 'در حال بارگذاری داده‌ها...';
         loadingMessage.style.display = 'block';
         scoresTableBody.innerHTML = '';
+        if (scoresChart) scoresChart.destroy();
 
         let query = supabase.from('scores').select(`
             score,
             profiles (id, name),
-            exams (id, name, subject_id, subjects (id, name))
+            exams (id, name, exam_date, subjects (id, name))
         `);
 
-        // Apply filters to the query
+        // Handle student and exam filters directly
         if (studentFilter.value !== 'all') {
             query = query.eq('student_id', studentFilter.value);
-        }
-        if (subjectFilter.value !== 'all') {
-            query = query.eq('exams.subject_id', subjectFilter.value);
         }
         if (examFilter.value !== 'all') {
             query = query.eq('exam_id', examFilter.value);
         }
 
+        // **CORRECTED LOGIC for subject filter**
+        if (subjectFilter.value !== 'all') {
+            // First, get all exam IDs for the selected subject
+            const { data: examIds, error: examIdError } = await supabase
+                .from('exams')
+                .select('id')
+                .eq('subject_id', subjectFilter.value);
+            
+            if (examIdError) {
+                loadingMessage.textContent = 'خطا در یافتن آزمون‌های درس.';
+                console.error(examIdError);
+                return;
+            }
+
+            const ids = examIds.map(e => e.id);
+            if (ids.length === 0) {
+                // If no exams for this subject, then no scores to show
+                currentReportData = [];
+                loadingMessage.textContent = 'هیچ آزمونی برای این درس یافت نشد.';
+                return;
+            }
+            // Now, filter scores where the exam_id is in our list of IDs
+            query = query.in('exam_id', ids);
+        }
+
         const { data, error } = await query;
+        
         if (error) {
             loadingMessage.textContent = 'خطا در دریافت داده‌ها.';
             console.error(error);
             return;
         }
         
-        allScoresData = data;
+        data.sort((a, b) => {
+            const dateA = a.exams ? new Date(a.exams.exam_date) : 0;
+            const dateB = b.exams ? new Date(b.exams.exam_date) : 0;
+            return dateB - dateA; 
+        });
+
+        currentReportData = data;
 
         if (data.length === 0) {
             loadingMessage.textContent = 'هیچ داده‌ای برای فیلتر انتخاب شده یافت نشد.';
-            if (scoresChart) scoresChart.destroy();
             return;
         }
 
         loadingMessage.style.display = 'none';
         
-        // Render table
         data.forEach(item => {
             const row = scoresTableBody.insertRow();
             row.innerHTML = `
-                <td>${item.profiles.name}</td>
-                <td>${item.exams.subjects.name}</td>
-                <td>${item.exams.name}</td>
+                <td>${item.profiles?.name || 'دانش‌آموز حذف شده'}</td>
+                <td>${item.exams?.subjects?.name || 'درس حذف شده'}</td>
+                <td>${item.exams?.name || 'آزمون حذف شده'}</td>
                 <td>${item.score}</td>
             `;
         });
 
-        // Render chart
         renderChart(data);
+    }
+
+    // Helper function to determine the max Y-axis value for the chart
+    function getChartMaxY(scores) {
+        if (!scores || scores.length === 0) return 100;
+        const maxScore = Math.max(...scores);
+        if (maxScore <= 10) return 10;
+        if (maxScore <= 20) return 20;
+        if (maxScore <= 40) return 40;
+        if (maxScore <= 100) return 100;
+        return Math.ceil(maxScore / 10) * 10;
     }
 
     // Render the bar chart
@@ -107,8 +142,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (scoresChart) {
             scoresChart.destroy();
         }
-        const labels = data.map(item => `${item.profiles.name} (${item.exams.name})`);
+        const labels = data.map(item => `${item.profiles?.name || 'ناشناس'} (${item.exams?.name?.substring(0,10) || 'حذف شده'}...)`);
         const scores = data.map(item => item.score);
+        
+        const maxY = getChartMaxY(scores);
 
         scoresChart = new Chart(chartCanvas, {
             type: 'bar',
@@ -119,21 +156,32 @@ document.addEventListener('DOMContentLoaded', () => {
                     data: scores,
                     backgroundColor: 'rgba(38, 166, 154, 0.6)',
                     borderColor: 'rgba(38, 166, 154, 1)',
-                    borderWidth: 1
+                    borderWidth: 1,
+                    borderRadius: 5,
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        max: 100
-                    }
+                scales: { 
+                    y: { 
+                        beginAtZero: true, 
+                        max: maxY
+                    } 
                 },
                 plugins: {
-                    legend: {
-                        display: false
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            title: (context) => {
+                                const item = data[context[0].dataIndex];
+                                return `${item.profiles?.name || 'ناشناس'} - ${item.exams?.subjects?.name || 'نامشخص'}`;
+                            },
+                            label: (context) => {
+                                const item = data[context.dataIndex];
+                                return `آزمون: ${item.exams?.name || 'حذف شده'} | نمره: ${item.score}`;
+                            }
+                        }
                     }
                 }
             }
@@ -142,14 +190,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Export data to Excel
     function exportToExcel(data, filename) {
-        if (data.length === 0) {
+        if (!data || data.length === 0) {
             alert("هیچ داده‌ای برای خروجی گرفتن وجود ندارد.");
             return;
         }
         const flattenedData = data.map(item => ({
-            "نام دانش آموز": item.profiles.name,
-            "درس": item.exams.subjects.name,
-            "آزمون": item.exams.name,
+            "نام دانش آموز": item.profiles?.name || 'دانش‌آموز حذف شده',
+            "درس": item.exams?.subjects?.name || 'درس حذف شده',
+            "آزمون": item.exams?.name || 'آزمون حذف شده',
             "نمره": item.score
         }));
         const worksheet = XLSX.utils.json_to_sheet(flattenedData);
@@ -160,8 +208,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Event Listeners
     applyFilterBtn.addEventListener('click', renderReport);
-    exportAllBtn.addEventListener('click', () => exportToExcel(allScoresData, "گزارش_کامل_نمرات"));
-
+    exportAllBtn.addEventListener('click', () => exportToExcel(currentReportData, "گزارش_فیلتر_شده"));
+    
     // Initial Load
     checkAccessRole().then(hasAccess => {
         if (hasAccess) {
