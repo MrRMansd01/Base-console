@@ -143,7 +143,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
             const payload = { contents: chatHistory };
-            const apiKey = "";
+            const apiKey = "AIzaSyBMVIfay_dqBXzH_sWJb2f53jS__XOyQRg";
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
 
             const response = await fetch(apiUrl, {
