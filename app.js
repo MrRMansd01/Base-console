@@ -1,3 +1,5 @@
+// فایل: app.js
+
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('DOM loaded, initializing app...');
     
@@ -58,6 +60,49 @@ document.addEventListener('DOMContentLoaded', async function() {
     const detailsUserIdInput = document.getElementById('details-user-id');
     const detailInputs = studentDetailsModal.querySelectorAll('.task-input, textarea');
 
+    // --- Feedback Modal Elements ---
+    const feedbackModal = document.getElementById('feedbackModal');
+    const closeFeedbackBtn = document.getElementById('closeFeedbackBtn');
+    const feedbackMessage = document.getElementById('feedback-message');
+    
+    // --- View Feedback Modal Elements ---
+    const viewFeedbackModal = document.getElementById('viewFeedbackModal');
+    const closeViewFeedbackBtn = document.getElementById('closeViewFeedbackBtn');
+    const feedbackDisplayContent = document.getElementById('feedback-display-content');
+
+    // --- NEW: View Feedback Modal Functions ---
+    async function openViewFeedbackModal(taskId, taskTitle) {
+        if (!viewFeedbackModal || !feedbackDisplayContent) return;
+
+        // نمایش عنوان تسک در پاپ‌آپ
+        viewFeedbackModal.querySelector('h2').textContent = `بازخورد برای: ${taskTitle}`;
+        feedbackDisplayContent.innerHTML = '<p>در حال بارگذاری بازخورد...</p>';
+        viewFeedbackModal.classList.add('is-open');
+
+        try {
+            const { data, error } = await supabase
+                .from('task_feedback')
+                .select('feedback, created_at')
+                .eq('task_id', taskId)
+                .order('created_at', { ascending: false }); // دریافت آخرین بازخورد
+
+            if (error) throw error;
+
+            if (data && data.length > 0) {
+                const feedbackText = data[0].feedback;
+                feedbackDisplayContent.textContent = feedbackText;
+            } else {
+                feedbackDisplayContent.innerHTML = '<p style="color: #888;">هیچ بازخوردی برای این تسک ثبت نشده است.</p>';
+            }
+        } catch (error) {
+            console.error('Error fetching feedback:', error);
+            feedbackDisplayContent.innerHTML = '<p style="color: #f44336;">خطا در دریافت بازخورد.</p>';
+        }
+    }
+
+    function closeViewFeedbackModal() {
+        if (viewFeedbackModal) viewFeedbackModal.classList.remove('is-open');
+    }
 
     async function loadTasksForUser(userId, userName, isAdminFlag, filter = 'all') {
         const tasksContainer = document.querySelector('.tasks-container');
@@ -229,7 +274,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     ${canModify ? '' : 'disabled'}> 
             </div>
             <div class="task-content">
-                <span class="task-title">${task.title}</span>
+                <span class="task-title" style="cursor: pointer;" title="مشاهده بازخورد">${task.title}</span>
                 <div class="task-info">
                     ${taskDate ? `<span class="task-date"><i class="fas fa-calendar"></i> ${taskDate}</span>` : ''}
                     ${startTime ? `<span class="task-time"><i class="fas fa-clock"></i> ${startTime}</span>` : ''}
@@ -243,6 +288,18 @@ document.addEventListener('DOMContentLoaded', async function() {
                 ` : ''} 
             </div>
         `;
+        
+        // --- افزودن Event Listener به عنوان تسک ---
+        const taskTitleElement = taskElement.querySelector('.task-title');
+        taskTitleElement.addEventListener('click', () => {
+            // فقط اگر تسک تکمیل شده باشد، بازخورد را نشان بده
+            if (task.is_completed) {
+                openViewFeedbackModal(task.id, task.title);
+            } else {
+                // می‌توانید یک پیام دلخواه برای تسک‌های تکمیل‌نشده بگذارید
+                alert('برای مشاهده بازخورد، ابتدا باید تسک را تکمیل کنید.');
+            }
+        });
             
         if (canModify) {
             const checkbox = taskElement.querySelector('.task-complete-checkbox');
@@ -1030,6 +1087,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     if(saveEditUserBtn) saveEditUserBtn.addEventListener('click', saveUserEdit);
     if(cancelEditUserBtn) cancelEditUserBtn.addEventListener('click', hideEditUserModal);
 
+    // --- افزودن Event Listeners برای پاپ‌آپ جدید ---
+    if(closeViewFeedbackBtn) closeViewFeedbackBtn.addEventListener('click', closeViewFeedbackModal);
 
     window.addEventListener('click', (event) => {
         if (event.target == studentDetailsModal) {
@@ -1040,6 +1099,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
         if (event.target == taskModal) {
             hideTaskModal();
+        }
+        if (event.target == viewFeedbackModal) {
+            closeViewFeedbackModal();
         }
     });
 
@@ -1053,6 +1115,9 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
             if (taskModal.classList.contains('is-open')) {
                 hideTaskModal();
+            }
+            if (viewFeedbackModal && viewFeedbackModal.classList.contains('is-open')) {
+                closeViewFeedbackModal();
             }
         }
     });
