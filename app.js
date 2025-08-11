@@ -1,18 +1,18 @@
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM loaded, initializing app...');
-    
+
     // --- Global Variables ---
     let selectedUserId = null;
     let selectedDateObject = new Date();
     let isAdmin = false;
     let currentUserRole = null;
     const ADMIN_ID = '23df94b7-412f-4321-a001-591c07fe622e';
-    let supabase; 
-    let selectedScore = 1; 
-    let currentFilter = 'all'; 
-    let editingTaskId = null; 
-    let userTaskMap = new Map(); 
-    
+    // Supabase is now expected to be globally available from the inline script in index.html
+    let selectedScore = 1;
+    let currentFilter = 'all';
+    let editingTaskId = null;
+    let userTaskMap = new Map();
+
     // --- DOM Element References ---
     const taskModal = document.getElementById('taskModal');
     const addTaskBtn = document.getElementById('open-task-modal-btn');
@@ -30,31 +30,31 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const excelUploadBtn = document.getElementById('excelUploadBtn');
     const excelFileInput = document.getElementById('excelFileInput');
-    
+
     const clearCompletedBtn = document.querySelector('.clear-completed-btn');
     const statsCompletedElement = document.getElementById('stats-completed');
     const statsPendingElement = document.getElementById('stats-pending');
     const statsTotalTimeElement = document.getElementById('stats-total-time');
     const modalTitleElement = taskModal?.querySelector('h2');
     let flatpickrInstance = null;
-    
+
     const editUserModal = document.getElementById('editUserModal');
     const saveEditUserBtn = document.getElementById('saveEditUserBtn');
     const cancelEditUserBtn = document.getElementById('cancelEditUserBtn');
-    
+
     const viewProfileBtn = document.getElementById('view-profile-btn');
     const studentDetailsModal = document.getElementById('studentDetailsModal');
     const saveStudentDetailsBtn = document.getElementById('saveStudentDetailsBtn');
     const cancelStudentDetailsBtn = document.getElementById('cancelStudentDetailsBtn');
     const detailsUserIdInput = document.getElementById('details-user-id');
-    
+
     // --- Feedback System DOM Elements ---
     const feedbackModal = document.getElementById('feedbackModal');
     const feedbackForm = document.getElementById('feedback-form');
     const feedbackTaskIdInput = document.getElementById('feedback-task-id');
     const feedbackTextarea = document.getElementById('feedback-textarea');
     const skipFeedbackBtn = document.getElementById('skipFeedbackBtn');
-    
+
     const viewFeedbackModal = document.getElementById('viewFeedbackModal');
     const closeViewFeedbackBtn = document.getElementById('closeViewFeedbackBtn');
     const feedbackDisplayContent = document.getElementById('feedback-display-content');
@@ -67,36 +67,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const reportContent = document.getElementById('report-content');
     const aiSummaryContent = document.getElementById('ai-summary-content');
     const closeReportModalBtn = document.getElementById('closeReportModalBtn');
-
-    // --- Supabase Initialization with Error Handling ---
-    function initializeSupabase() {
-        console.log('Checking for Supabase...');
-        
-        // بررسی window.supabase
-        if (window.supabase && typeof window.supabase.auth !== 'undefined') {
-            console.log('Found window.supabase');
-            return window.supabase;
-        }
-        
-        // بررسی supabase global
-        if (typeof supabase !== 'undefined' && supabase.createClient) {
-            console.log('Found global supabase, creating client...');
-            const supabaseUrl = 'YOUR_SUPABASE_URL';
-            const supabaseKey = 'YOUR_SUPABASE_ANON_KEY';
-            return supabase.createClient(supabaseUrl, supabaseKey);
-        }
-        
-        // بررسی createClient مستقیم
-        if (typeof createClient !== 'undefined') {
-            console.log('Found createClient function');
-            const supabaseUrl = 'YOUR_SUPABASE_URL';
-            const supabaseKey = 'YOUR_SUPABASE_ANON_KEY';
-            return createClient(supabaseUrl, supabaseKey);
-        }
-        
-        console.error('Available window properties:', Object.keys(window));
-        throw new Error('Supabase client is not available. Please ensure Supabase is properly loaded.');
-    }
 
     // --- Report Modal Functions ---
     function openReportModal() {
@@ -161,7 +131,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const taskDate = new Date(task.created_at).toLocaleDateString('fa-IR');
                 reportText += `- ${task.title} (تاریخ: ${taskDate}) - وضعیت: ${status}\n`;
             });
-            
+
             reportText += `\n--- آمار کلی ---\n`;
             reportText += `تعداد کل تسک‌ها: ${tasks.length}\n`;
             reportText += `تکمیل شده: ${completedTasks}\n`;
@@ -169,12 +139,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
             reportContent.textContent = reportText;
 
+            // This section for AI summary is commented out as it requires a valid API key.
+            // You can re-enable it by providing your Gemini API key.
+            /*
             const prompt = `لطفا گزارش عملکرد زیر را که برای یک دانش‌آموز است، به زبان فارسی خلاصه کن. در خلاصه‌ی خود به نقاط قوت، ضعف‌های احتمالی و یک توصیه‌ی کلی اشاره کن:\n\n${reportText}`;
             
             let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
             const payload = { contents: chatHistory };
-            const apiKey = "";
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+            const apiKey = "YOUR_GEMINI_API_KEY"; // <-- IMPORTANT: Add your API key here
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
 
             const response = await fetch(apiUrl, {
                 method: 'POST',
@@ -192,8 +165,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 const summary = result.candidates[0].content.parts[0].text;
                 aiSummaryContent.textContent = summary;
             } else {
-                throw new Error('No content in API response.');
+                 aiSummaryContent.innerHTML = '<p class="placeholder" style="color: var(--danger-color);">پاسخی از سرویس هوش مصنوعی دریافت نشد.</p>';
             }
+            */
+           aiSummaryContent.innerHTML = '<p class="placeholder">خلاصه هوشمند غیرفعال است. برای فعال‌سازی کلید API را در کد قرار دهید.</p>';
 
         } catch (error) {
             console.error('Error generating report:', error);
@@ -201,7 +176,7 @@ document.addEventListener('DOMContentLoaded', function() {
             aiSummaryContent.innerHTML = '<p class="placeholder" style="color: var(--danger-color);">خطا در دریافت خلاصه.</p>';
         }
     }
-    
+
     // --- Feedback System Functions ---
     function showFeedbackSubmissionModal(taskId) {
         if (!feedbackModal) return;
@@ -218,7 +193,7 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         const taskId = feedbackTaskIdInput.value;
         const feedback = feedbackTextarea.value.trim();
-        
+
         if (!supabase) {
             alert('خطا: اتصال به پایگاه داده برقرار نیست.');
             return;
@@ -242,11 +217,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('خطا در ثبت بازخورد.');
             }
         }
-        
+
         hideFeedbackSubmissionModal();
         await reloadCurrentUserTasks();
     }
-    
+
     async function openViewFeedbackModal(taskId, taskTitle) {
         if (!viewFeedbackModal || !feedbackDisplayContent) return;
 
@@ -280,7 +255,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function reloadCurrentUserTasks() {
         if (!supabase) return;
-        
+
         const { data: { user } } = await supabase.auth.getUser();
         const targetUserId = selectedUserId || user.id;
         const targetUserName = document.querySelector(`.user-item[data-user-id="${targetUserId}"] .user-name`)?.textContent || user.email;
@@ -302,15 +277,15 @@ document.addEventListener('DOMContentLoaded', function() {
                  updateStatsDisplay(0, 0, '0:00');
                  return;
             }
-        
+
             let query = supabase.from('tasks').select('*').eq('user_id', userId);
             if (filter === 'completed') query = query.eq('is_completed', true);
             if (filter === 'incomplete') query = query.eq('is_completed', false);
             query = query.order('created_at', { ascending: false });
-            
+
             const { data: tasks, error } = await query;
             if (error) throw error;
-                
+
             const { data: statsTasks, error: statsError } = await supabase
                 .from('tasks')
                 .select('is_completed, time_start, time_end')
@@ -318,7 +293,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (statsError) throw statsError;
 
             tasksContainer.innerHTML = '';
-            
+
             let completedCount = 0, pendingCount = 0, totalMinutesStudied = 0;
             (statsTasks || []).forEach(task => {
                 if (task.is_completed) {
@@ -351,14 +326,14 @@ document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('.user-item').forEach(item => item.classList.remove('selected'));
             const selectedUserElement = usersContainer.querySelector(`.user-item[data-user-id="${userId}"]`);
             if (selectedUserElement) selectedUserElement.classList.add('selected');
-                
+
         } catch (error) {
             console.error('[loadTasksForUser] Unexpected error:', error);
             tasksContainer.innerHTML = '<div class="error-message">خطا در بارگذاری تسک‌ها</div>';
             updateStatsDisplay(0, 0, '0:00');
         }
     }
-    
+
     function updateStatsDisplay(completed, pending, totalTime) {
         if (statsCompletedElement) statsCompletedElement.textContent = completed;
         if (statsPendingElement) statsPendingElement.textContent = pending;
@@ -367,12 +342,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function updateTaskStatus(taskId, isCompleted) {
         try {
-            const { error } = await supabase.from('tasks').update({ 
+            const { error } = await supabase.from('tasks').update({
                 is_completed: isCompleted,
-                updated_at: new Date().toISOString() 
+                updated_at: new Date().toISOString()
             }).eq('id', taskId);
             if (error) throw error;
-            
+
             if (isCompleted) {
                 showFeedbackSubmissionModal(taskId);
             } else {
@@ -383,7 +358,7 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('خطا در به‌روزرسانی وضعیت تسک');
         }
     }
-    
+
     function createTaskElement(task, isAdminFlag, currentUser) {
         const taskElement = document.createElement('div');
         taskElement.className = `task-item score${task.color || '1'}`;
@@ -391,7 +366,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const canModify = isAdminFlag || task.user_id === currentUser.id;
 
         const formatTime = (timeStr) => {
-            if (!timeStr || !/^\d{2}:\d{2}$/.test(timeStr.substring(0, 5))) return '';
+            if (!timeStr || !/^\d{2}:\d{2}/.test(timeStr)) return '';
             const [hours, minutes] = timeStr.split(':');
             return `${hours}:${minutes}`;
         };
@@ -399,12 +374,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const startTime = formatTime(task.time_start);
         const endTime = formatTime(task.time_end);
         const taskDate = task.date ? new Date(task.date).toLocaleDateString('fa-IR', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
-                
+
         taskElement.innerHTML = `
             <div class="task-checkbox">
-                <input type="checkbox" class="task-complete-checkbox" 
-                    ${task.is_completed ? 'checked' : ''} 
-                    ${canModify ? '' : 'disabled'}> 
+                <input type="checkbox" class="task-complete-checkbox"
+                    ${task.is_completed ? 'checked' : ''}
+                    ${canModify ? '' : 'disabled'}>
             </div>
             <div class="task-content">
                 <span class="task-title" style="cursor: pointer;" title="مشاهده بازخورد">${task.title}</span>
@@ -418,7 +393,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 ${canModify ? `
                     <button class="task-btn edit-btn" title="ویرایش"><i class="fas fa-edit"></i></button>
                     <button class="task-btn delete-btn" title="حذف"><i class="fas fa-trash"></i></button>
-                ` : ''} 
+                ` : ''}
             </div>
         `;
 
@@ -430,7 +405,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('برای مشاهده بازخورد، ابتدا باید تسک را تکمیل کنید.');
             }
         });
-            
+
         if (canModify) {
             taskElement.querySelector('.task-complete-checkbox').addEventListener('change', (e) => {
                 updateTaskStatus(task.id, e.target.checked);
@@ -442,7 +417,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             taskElement.querySelector('.edit-btn')?.addEventListener('click', () => showTaskModal(task));
         }
-            
+
         return taskElement;
     }
 
@@ -451,10 +426,10 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             const { data: users, error: usersError } = await supabase.from('profiles').select('*').order('created_at', { ascending: true });
             if (usersError) throw usersError;
-                
+
             const { data: allTasks, error: tasksError } = await supabase.from('tasks').select('user_id');
             if (tasksError) console.error('Error fetching tasks for count:', tasksError);
-            
+
             userTaskMap.clear();
             const taskCounts = {};
             if (allTasks) {
@@ -463,9 +438,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
             users.forEach(user => userTaskMap.set(user.id, { ...user, taskCount: taskCounts[user.id] || 0 }));
-            
+
             const usersToDisplay = isAdminFlag ? users : users.filter(u => u.id === currentUser.id);
-            
+
             usersContainer.innerHTML = '';
             usersToDisplay.forEach(userProfile => {
                 const userElement = document.createElement('li');
@@ -488,7 +463,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                     </div>
                 `;
-                
+
                 userElement.addEventListener('click', (e) => {
                     if (e.target.closest('.user-actions')) return;
                     if (selectedUserId === userProfile.id) return;
@@ -516,7 +491,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     e.stopPropagation();
                     deleteUserProfile(userProfile.id, userProfile.name);
                 });
-                
+
                 usersContainer.appendChild(userElement);
             });
 
@@ -529,9 +504,9 @@ document.addEventListener('DOMContentLoaded', function() {
             usersContainer.innerHTML = '<li class="error-message">خطا در بارگذاری کاربران</li>';
         }
     }
-    
+
     // --- Utility and Modal Functions ---
-    function showTaskModal(taskToEdit = null) { 
+    function showTaskModal(taskToEdit = null) {
         editingTaskId = taskToEdit ? taskToEdit.id : null;
         if (editingTaskId) {
             if (modalTitleElement) modalTitleElement.textContent = 'ویرایش تسک';
@@ -551,8 +526,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         if (taskModal) taskModal.classList.add('is-open');
     }
-    function hideTaskModal() { 
-        if (taskModal) taskModal.classList.remove('is-open'); 
+    function hideTaskModal() {
+        if (taskModal) taskModal.classList.remove('is-open');
     }
     function resetTaskForm() {
         editingTaskId = null;
@@ -567,7 +542,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (categoryButtons[0]) categoryButtons[0].classList.add('active');
         selectedScore = 1;
     }
-    async function deleteTask(taskId) { 
+    async function deleteTask(taskId) {
         if (!supabase) return;
         const { error } = await supabase.from('tasks').delete().eq('id', taskId);
         if (error) {
@@ -618,7 +593,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (editUserModal) editUserModal.classList.add('is-open');
         }
     }
-    function hideEditUserModal() { 
+    function hideEditUserModal() {
         if (editUserModal) editUserModal.classList.remove('is-open');
     }
     async function deleteUserProfile(userIdToDelete, userName) {
@@ -637,7 +612,7 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             const { error } = await supabase.rpc('delete_user_and_data', { user_id_to_delete: userIdToDelete });
             if (error) throw error;
-            
+
             if (selectedUserId === userIdToDelete) selectedUserId = currentUser.id;
             await loadUsers(currentUser, isAdmin);
 
@@ -653,7 +628,7 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('خطا در دریافت اطلاعات پروفایل.');
             return;
         }
-        
+
         const detailsFields = {
             'details-fullname': profile.full_name || '',
             'details-father-name': profile.father_name || '',
@@ -678,14 +653,14 @@ document.addEventListener('DOMContentLoaded', function() {
             studentDetailsModal.classList.add('is-open');
         }
     }
-    function closeStudentDetailsModal() { 
+    function closeStudentDetailsModal() {
         if (studentDetailsModal) studentDetailsModal.classList.remove('is-open');
     }
     async function saveStudentDetails() {
         if (!supabase) return;
         const userId = detailsUserIdInput?.value;
         if (!userId) return;
-        
+
         const updates = {
             full_name: document.getElementById('details-fullname')?.value || '',
             father_name: document.getElementById('details-father-name')?.value || '',
@@ -709,11 +684,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const editUserIdInput = document.getElementById('edit-user-id');
         const editUserNameInput = document.getElementById('edit-user-name');
         const editUserRoleSelect = document.getElementById('edit-user-role');
-        
+
         const userId = editUserIdInput?.value;
         const newName = editUserNameInput?.value;
         const newUserRole = editUserRoleSelect?.value;
-        
+
         if (!userId || !newName) return alert('لطفا نام کاربر را وارد کنید.');
         const updates = { name: newName.trim() };
         if (isAdmin && newUserRole) updates.role = newUserRole;
@@ -727,74 +702,32 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // --- Wait for Supabase to be Available ---
-    async function waitForSupabase(maxAttempts = 50, delay = 200) {
-        console.log('Waiting for Supabase to be available...');
-        
-        for (let i = 0; i < maxAttempts; i++) {
-            try {
-                // بررسی وجود Supabase در روش‌های مختلف
-                if (window.supabase) {
-                    console.log('Found window.supabase, testing connection...');
-                    supabase = window.supabase;
-                    const { data, error } = await supabase.auth.getUser();
-                    console.log('Supabase connection test successful');
-                    return true;
-                }
-                
-                // تلاش برای ایجاد کلاینت جدید
-                if (window.createClient) {
-                    console.log('Found createClient, attempting to create client...');
-                    // شما باید URL و Key واقعی خود را اینجا قرار دهید
-                    const supabaseUrl = 'https://your-project.supabase.co';
-                    const supabaseKey = 'your-anon-key';
-                    supabase = window.createClient(supabaseUrl, supabaseKey);
-                    await supabase.auth.getUser();
-                    console.log('Successfully created Supabase client');
-                    return true;
-                }
-                
-                console.log(`Attempt ${i + 1}: Supabase not ready yet...`);
-                
-            } catch (error) {
-                console.log(`Attempt ${i + 1} failed:`, error.message);
-            }
-            
-            if (i < maxAttempts - 1) {
-                await new Promise(resolve => setTimeout(resolve, delay));
-            }
-        }
-        
-        console.error('Failed to initialize Supabase after all attempts');
-        console.error('Available window properties:', Object.keys(window).filter(key => key.toLowerCase().includes('supabase')));
-        return false;
-    }
-
     // --- App Initialization ---
     async function initializeApp() {
+        // The global 'supabase' object is already initialized by the inline script in index.html
+        if (typeof supabase === 'undefined' || !supabase) {
+             console.error('Supabase client is not available. Please ensure it is loaded and initialized before app.js');
+             document.body.innerHTML = `<div style="text-align:center; padding: 2rem;"><h2>خطای حیاتی: Supabase یافت نشد.</h2></div>`;
+             return;
+        }
+
+        console.log('Supabase client found. Initializing app...');
+
         try {
-            // Wait for Supabase to be available
-            const supabaseReady = await waitForSupabase();
-            if (!supabaseReady) {
-                throw new Error('Supabase client could not be initialized after multiple attempts');
-            }
-
-            console.log('Supabase initialized successfully');
-
             const { data: { user }, error: authError } = await supabase.auth.getUser();
             if (authError || !user) {
                 console.log('User not authenticated, redirecting to login...');
                 window.location.href = '/login.html';
                 return;
             }
-            
+
             const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
             if (userNameElement) userNameElement.textContent = profile?.name || user.email;
-            isAdmin = user.id === ADMIN_ID;
+            isAdmin = profile?.role === 'admin'; // Correctly check the role from the profile
             currentUserRole = profile?.role || 'student';
-            
+
             await loadUsers(user, isAdmin);
-            
+
             // Initialize Flatpickr only if the wrapper exists
             const flatpickrWrapper = document.querySelector('.flatpickr-wrapper');
             if (flatpickrWrapper && typeof flatpickr !== 'undefined') {
@@ -802,7 +735,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     locale: "fa",
                     dateFormat: "Y-m-d",
                     altInput: true,
-                    altFormat: "l ، j F Y",
+                    altFormat: "l، j F Y",
                     wrap: true,
                     defaultDate: new Date(),
                     onChange: (selectedDates) => {
@@ -819,7 +752,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 await reloadCurrentUserTasks();
             });
             closeViewFeedbackBtn?.addEventListener('click', closeViewFeedbackModal);
-            
+
             generateReportBtn?.addEventListener('click', openReportModal);
             closeReportModalBtn?.addEventListener('click', closeReportModal);
             reportForm?.addEventListener('submit', handleReportGeneration);
@@ -889,7 +822,7 @@ document.addEventListener('DOMContentLoaded', function() {
                          const { error } = await supabase.from('tasks').update(taskData).eq('id', editingTaskId);
                          if (error) throw error;
                      } else {
-                         const { error } = await supabase.from('tasks').insert([{ ...taskData, user_id: targetUserId, created_at: new Date().toISOString() }]);
+                         const { error } = await supabase.from('tasks').insert([{ ...taskData, user_id: targetUserId, is_completed: false, created_at: new Date().toISOString() }]);
                          if (error) throw error;
                      }
                      hideTaskModal();
@@ -917,17 +850,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         } catch (error) {
             console.error('Error initializing app:', error);
-            // Show a more user-friendly error message
             document.body.innerHTML = `
                 <div style="display: flex; align-items: center; justify-content: center; height: 100vh; background: #f5f5f5;">
                     <div style="text-align: center; padding: 2rem; background: white; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
                         <h2 style="color: #f44336; margin-bottom: 1rem;">خطا در بارگذاری برنامه</h2>
-                        <p style="color: #666; margin-bottom: 1rem;">مشکل در اتصال به سرویس. لطفا:</p>
-                        <ul style="text-align: right; color: #666; margin-bottom: 1rem;">
-                            <li>اتصال اینترنت خود را بررسی کنید</li>
-                            <li>صفحه را دوباره بارگذاری کنید</li>
-                            <li>اگر مشکل ادامه داشت، با پشتیبانی تماس بگیرید</li>
-                        </ul>
+                        <p style="color: #666; margin-bottom: 1rem;">مشکل در اتصال به سرویس. لطفا صفحه را دوباره بارگذاری کنید.</p>
                         <button onclick="location.reload()" style="padding: 0.5rem 1rem; background: #2196F3; color: white; border: none; border-radius: 5px; cursor: pointer;">
                             بارگذاری مجدد
                         </button>
