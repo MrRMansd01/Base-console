@@ -1,4 +1,4 @@
-# سیستم مدیریت مدرسه (Spooder Console)
+# کنسول پایه
 
 این پروژه یک سیستم جامع برای مدیریت امور مدرسه با رابط کاربری فارسی است. این سیستم با استفاده از Node.js، Express.js و JavaScript خالص در سمت کلاینت توسعه داده شده و از Supabase برای مدیریت پایگاه داده استفاده می‌کند.
 
@@ -39,7 +39,7 @@
 
 1.  **کلون کردن مخزن:**
     ```bash
-    git clone https://github.com/MrRMansd01/spooder_console.git
+    git clone [https://github.com/MrRMansd01/spooder_console.git](https://github.com/MrRMansd01/spooder_console.git)
     cd spooder_console
     ```
 

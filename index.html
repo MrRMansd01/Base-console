@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مدیریت وظایف</title>
-    <!-- Base styles for page structure -->
+    <title>مدیریت وظایف - کنسول پایه</title>
+    <link rel="icon" href="logo.svg" type="image/svg+xml">
     <link rel="stylesheet" href="subjects.css">
-    <!-- Specific styles for this page -->
     <link rel="stylesheet" href="tasks.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -14,7 +13,6 @@
 </head>
 <body>
     <div class="page-container">
-        <!-- Page Header -->
         <header class="page-header">
             <h1>مدیریت وظایف</h1>
             <a href="/home.html" class="back-to-dashboard-btn">
@@ -22,9 +20,7 @@
             </a>
         </header>
 
-        <!-- Main Content Area -->
         <main class="content-main">
-            <!-- User Selection Section -->
             <section class="user-management-section">
                 <div class="user-info">
                     <h3 id="username">کاربر</h3>
@@ -40,11 +36,9 @@
                 </div>
             </section>
 
-            <!-- Task Management Section -->
             <section class="task-section">
                 <div class="toolbar">
                     <button class="btn btn-primary" id="open-task-modal-btn"><i class="fas fa-plus"></i> افزودن تسک</button>
-                    <!-- New Report Button -->
                     <button class="btn btn-primary" id="generate-report-btn"><i class="fas fa-chart-line"></i> گزارش کار</button>
                     <button class="btn btn-secondary" id="excelUploadBtn" title="آپلود از اکسل"><i class="fas fa-file-excel"></i> آپلود</button>
                     <input type="file" id="excelFileInput" accept=".xlsx, .xls" style="display: none;">
@@ -61,11 +55,9 @@
                 </div>
 
                 <div class="tasks-container">
-                    <!-- Tasks will be dynamically inserted here -->
-                </div>
+                    </div>
             </section>
 
-            <!-- Stats Section -->
             <section class="stats-section">
                 <div class="stat-card">
                     <h3>تکمیل شده</h3>
@@ -83,9 +75,6 @@
         </main>
     </div>
 
-    <!-- MODALS SECTION -->
-    
-    <!-- Report Generation Modal -->
     <div id="reportModal" class="modal">
         <div class="modal-content large">
             <h2>تهیه گزارش عملکرد</h2>
@@ -115,9 +104,6 @@
         </div>
     </div>
 
-    <!-- Other Modals (Task, Edit User, etc.) -->
-    <!-- (کدهای پاپ‌آپ‌های دیگر بدون تغییر در اینجا قرار می‌گیرند) -->
-    <!-- Task Modal -->
     <div id="taskModal" class="modal">
         <div class="modal-content">
             <h2>تسک جدید</h2>
@@ -154,7 +140,6 @@
         </div>
     </div>
 
-    <!-- Edit User Modal -->
     <div id="editUserModal" class="modal">
         <div class="modal-content">
             <h2>ویرایش کاربر</h2>
@@ -179,7 +164,6 @@
         </div>
     </div>
     
-    <!-- Student Details Modal -->
     <div id="studentDetailsModal" class="modal">
         <div class="modal-content">
             <h2>پروفایل دانش‌آموز</h2>
@@ -200,7 +184,6 @@
         </div>
     </div>
 
-    <!-- Feedback Submission Modal -->
     <div id="feedbackModal" class="modal">
         <div class="modal-content">
             <h2 id="feedback-modal-title">چطور بود؟</h2>
@@ -218,7 +201,6 @@
         </div>
     </div>
 
-    <!-- View Feedback Modal -->
     <div id="viewFeedbackModal" class="modal">
         <div class="modal-content">
             <h2>مشاهده بازخورد</h2>
@@ -230,7 +212,6 @@
     </div>
 
 
-    <!-- SCRIPTS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         const supabaseUrl = 'https://lholzspyazziknxqopmi.supabase.co';
