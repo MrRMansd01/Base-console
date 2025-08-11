@@ -141,12 +141,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // This section for AI summary is commented out as it requires a valid API key.
             // You can re-enable it by providing your Gemini API key.
-            /*
+            
             const prompt = `لطفا گزارش عملکرد زیر را که برای یک دانش‌آموز است، به زبان فارسی خلاصه کن. در خلاصه‌ی خود به نقاط قوت، ضعف‌های احتمالی و یک توصیه‌ی کلی اشاره کن:\n\n${reportText}`;
             
             let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
             const payload = { contents: chatHistory };
-            const apiKey = "YOUR_GEMINI_API_KEY"; // <-- IMPORTANT: Add your API key here
+            const apiKey = "AIzaSyBMVIfay_dqBXzH_sWJb2f53jS__XOyQRg"; // <-- IMPORTANT: Add your API key here
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
 
             const response = await fetch(apiUrl, {
@@ -167,7 +167,7 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                  aiSummaryContent.innerHTML = '<p class="placeholder" style="color: var(--danger-color);">پاسخی از سرویس هوش مصنوعی دریافت نشد.</p>';
             }
-            */
+            
            aiSummaryContent.innerHTML = '<p class="placeholder">خلاصه هوشمند غیرفعال است. برای فعال‌سازی کلید API را در کد قرار دهید.</p>';
 
         } catch (error) {
