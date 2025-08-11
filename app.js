@@ -70,19 +70,31 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- Supabase Initialization with Error Handling ---
     function initializeSupabase() {
-        // چک کردن اینکه آیا supabase در window موجود است
-        if (typeof window.supabase !== 'undefined') {
+        console.log('Checking for Supabase...');
+        
+        // بررسی window.supabase
+        if (window.supabase && typeof window.supabase.auth !== 'undefined') {
+            console.log('Found window.supabase');
             return window.supabase;
         }
         
-        // اگر createClient در دسترس است، از آن استفاده کن
-        if (typeof window.supabaseCreateClient !== 'undefined') {
+        // بررسی supabase global
+        if (typeof supabase !== 'undefined' && supabase.createClient) {
+            console.log('Found global supabase, creating client...');
             const supabaseUrl = 'YOUR_SUPABASE_URL';
             const supabaseKey = 'YOUR_SUPABASE_ANON_KEY';
-            return window.supabaseCreateClient(supabaseUrl, supabaseKey);
+            return supabase.createClient(supabaseUrl, supabaseKey);
         }
         
-        // اگر هیچکدام در دسترس نیست
+        // بررسی createClient مستقیم
+        if (typeof createClient !== 'undefined') {
+            console.log('Found createClient function');
+            const supabaseUrl = 'YOUR_SUPABASE_URL';
+            const supabaseKey = 'YOUR_SUPABASE_ANON_KEY';
+            return createClient(supabaseUrl, supabaseKey);
+        }
+        
+        console.error('Available window properties:', Object.keys(window));
         throw new Error('Supabase client is not available. Please ensure Supabase is properly loaded.');
     }
 
@@ -716,20 +728,45 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --- Wait for Supabase to be Available ---
-    async function waitForSupabase(maxAttempts = 10, delay = 100) {
+    async function waitForSupabase(maxAttempts = 50, delay = 200) {
+        console.log('Waiting for Supabase to be available...');
+        
         for (let i = 0; i < maxAttempts; i++) {
             try {
-                supabase = initializeSupabase();
-                // Test the connection
-                await supabase.auth.getUser();
-                return true;
-            } catch (error) {
-                console.log(`Attempt ${i + 1}: Supabase not ready yet...`, error.message);
-                if (i < maxAttempts - 1) {
-                    await new Promise(resolve => setTimeout(resolve, delay * (i + 1)));
+                // بررسی وجود Supabase در روش‌های مختلف
+                if (window.supabase) {
+                    console.log('Found window.supabase, testing connection...');
+                    supabase = window.supabase;
+                    const { data, error } = await supabase.auth.getUser();
+                    console.log('Supabase connection test successful');
+                    return true;
                 }
+                
+                // تلاش برای ایجاد کلاینت جدید
+                if (window.createClient) {
+                    console.log('Found createClient, attempting to create client...');
+                    // شما باید URL و Key واقعی خود را اینجا قرار دهید
+                    const supabaseUrl = 'https://your-project.supabase.co';
+                    const supabaseKey = 'your-anon-key';
+                    supabase = window.createClient(supabaseUrl, supabaseKey);
+                    await supabase.auth.getUser();
+                    console.log('Successfully created Supabase client');
+                    return true;
+                }
+                
+                console.log(`Attempt ${i + 1}: Supabase not ready yet...`);
+                
+            } catch (error) {
+                console.log(`Attempt ${i + 1} failed:`, error.message);
+            }
+            
+            if (i < maxAttempts - 1) {
+                await new Promise(resolve => setTimeout(resolve, delay));
             }
         }
+        
+        console.error('Failed to initialize Supabase after all attempts');
+        console.error('Available window properties:', Object.keys(window).filter(key => key.toLowerCase().includes('supabase')));
         return false;
     }
 
