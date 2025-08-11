@@ -553,13 +553,118 @@ document.addEventListener('DOMContentLoaded', async function() {
             userEl.style.display = (userName && userName.includes(searchTerm)) ? 'flex' : 'none';
         });
     }
-    function openEditUserModal(userId) { /* Your existing function */ }
-    function hideEditUserModal() { /* Your existing function */ }
-    async function deleteUserProfile(userIdToDelete, userName) { /* Your existing function */ }
-    async function openStudentDetailsModal() { /* Your existing function */ }
-    function closeStudentDetailsModal() { /* Your existing function */ }
-    async function saveStudentDetails() { /* Your existing function */ }
-    async function saveUserEdit() { /* Your existing function */ }
+    function openEditUserModal(userId) {
+        const editUserRoleGroup = document.getElementById('edit-user-role-group');
+        const editUserRoleSelect = document.getElementById('edit-user-role');
+        const editUserIdInput = document.getElementById('edit-user-id');
+        const editUserNameInput = document.getElementById('edit-user-name');
+
+        if (isAdmin) {
+            editUserRoleGroup.style.display = 'block';
+        } else {
+            editUserRoleGroup.style.display = 'none';
+        }
+
+        const userData = userTaskMap.get(userId);
+        if(userData) {
+            editUserIdInput.value = userId;
+            editUserNameInput.value = userData.name || '';
+            if (isAdmin) {
+                editUserRoleSelect.value = userData.role || 'student';
+            }
+            editUserModal.classList.add('is-open');
+        }
+    }
+    function hideEditUserModal() { 
+        editUserModal.classList.remove('is-open');
+    }
+    async function deleteUserProfile(userIdToDelete, userName) {
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        if (userIdToDelete === currentUser?.id) {
+            alert('شما نمی‌توانید حساب کاربری خودتان را حذف کنید.');
+            return;
+        }
+        if (userIdToDelete === ADMIN_ID) {
+            alert('امکان حذف کاربر ادمین وجود ندارد.');
+            return;
+        }
+        if (!confirm(`آیا مطمئن هستید که می‌خواهید کاربر "${userName}" و تمام تسک‌هایش را حذف کنید؟`)) return;
+
+        try {
+            // Admin RPC call to delete user
+            const { error } = await supabase.rpc('delete_user_and_data', { user_id_to_delete: userIdToDelete });
+            if (error) throw error;
+            
+            if (selectedUserId === userIdToDelete) selectedUserId = currentUser.id;
+            await loadUsers(currentUser, isAdmin);
+
+        } catch (error) {
+            console.error('Error deleting user:', error);
+            alert('خطا در حذف کاربر.');
+        }
+    }
+    async function openStudentDetailsModal() {
+        if (!selectedUserId) return;
+        const { data: profile, error } = await supabase.from('profiles').select('*').eq('id', selectedUserId).single();
+        if (error) {
+            alert('خطا در دریافت اطلاعات پروفایل.');
+            return;
+        }
+        document.getElementById('details-fullname').value = profile.full_name || '';
+        document.getElementById('details-father-name').value = profile.father_name || '';
+        document.getElementById('details-mother-name').value = profile.mother_name || '';
+        document.getElementById('details-father-phone').value = profile.father_phone || '';
+        document.getElementById('details-mother-phone').value = profile.mother_phone || '';
+        document.getElementById('details-home-phone').value = profile.home_phone || '';
+        document.getElementById('details-description').value = profile.description || '';
+        detailsUserIdInput.value = profile.id;
+
+        const isEditable = currentUserRole === 'admin';
+        saveStudentDetailsBtn.style.display = isEditable ? 'inline-block' : 'none';
+        studentDetailsModal.querySelectorAll('input, textarea').forEach(input => input.readOnly = !isEditable);
+        
+        studentDetailsModal.classList.add('is-open');
+    }
+    function closeStudentDetailsModal() { 
+        studentDetailsModal.classList.remove('is-open');
+    }
+    async function saveStudentDetails() {
+        const userId = detailsUserIdInput.value;
+        if (!userId) return;
+        const updates = {
+            full_name: document.getElementById('details-fullname').value,
+            father_name: document.getElementById('details-father-name').value,
+            mother_name: document.getElementById('details-mother-name').value,
+            father_phone: document.getElementById('details-father-phone').value,
+            mother_phone: document.getElementById('details-mother-phone').value,
+            home_phone: document.getElementById('details-home-phone').value,
+            description: document.getElementById('details-description').value,
+            updated_at: new Date().toISOString()
+        };
+        const { error } = await supabase.from('profiles').update(updates).eq('id', userId);
+        if (error) {
+            alert('خطا در ذخیره تغییرات.');
+        } else {
+            alert('تغییرات با موفقیت ذخیره شد.');
+            closeStudentDetailsModal();
+        }
+    }
+    async function saveUserEdit() {
+        const userId = document.getElementById('edit-user-id').value;
+        const newName = document.getElementById('edit-user-name').value;
+        const newUserRole = document.getElementById('edit-user-role').value;
+        if (!userId || !newName) return alert('لطفا نام کاربر را وارد کنید.');
+        const updates = { name: newName.trim() };
+        if (isAdmin) updates.role = newUserRole;
+        const { error } = await supabase.from('profiles').update(updates).eq('id', userId);
+        if (error) {
+            alert('خطا در بروزرسانی کاربر.');
+        } else {
+            hideEditUserModal();
+            const { data: { user } } = await supabase.auth.getUser();
+            await loadUsers(user, isAdmin);
+        }
+    }
 
     // --- App Initialization and Event Listeners ---
     try {
