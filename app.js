@@ -3,10 +3,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // --- Global Variables ---
     let selectedUserId = null;
+    let selectedDateObject = new Date();
     let isAdmin = false;
     let currentUserRole = null;
     const ADMIN_ID = '23df94b7-412f-4321-a001-591c07fe622e';
     let supabase; 
+    let selectedScore = 1; 
     let currentFilter = 'all'; 
     let editingTaskId = null; 
     let userTaskMap = new Map(); 
@@ -34,7 +36,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const statsPendingElement = document.getElementById('stats-pending');
     const statsTotalTimeElement = document.getElementById('stats-total-time');
     const modalTitleElement = taskModal?.querySelector('h2');
-    let flatpickrInstance;
+    let flatpickrInstance = null;
     
     const editUserModal = document.getElementById('editUserModal');
     const saveEditUserBtn = document.getElementById('saveEditUserBtn');
@@ -46,6 +48,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const cancelStudentDetailsBtn = document.getElementById('cancelStudentDetailsBtn');
     const detailsUserIdInput = document.getElementById('details-user-id');
     
+    // --- Feedback System DOM Elements ---
     const feedbackModal = document.getElementById('feedbackModal');
     const feedbackForm = document.getElementById('feedback-form');
     const feedbackTaskIdInput = document.getElementById('feedback-task-id');
@@ -56,6 +59,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const closeViewFeedbackBtn = document.getElementById('closeViewFeedbackBtn');
     const feedbackDisplayContent = document.getElementById('feedback-display-content');
 
+    // --- Report Modal DOM Elements ---
     const generateReportBtn = document.getElementById('generate-report-btn');
     const reportModal = document.getElementById('reportModal');
     const reportForm = document.getElementById('report-form');
@@ -489,13 +493,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- Utility and Modal Functions ---
     function showTaskModal(taskToEdit = null) { 
         editingTaskId = taskToEdit ? taskToEdit.id : null;
-        let selectedScore = 1;
         if (editingTaskId) {
             modalTitleElement.textContent = 'ویرایش تسک';
             taskTitleInput.value = taskToEdit.title;
             timeStartInput.value = taskToEdit.time_start || '';
             timeEndInput.value = taskToEdit.time_end || '';
-            let selectedDateObject = taskToEdit.date ? new Date(taskToEdit.date) : new Date();
+            selectedDateObject = taskToEdit.date ? new Date(taskToEdit.date) : new Date();
             flatpickrInstance.setDate(selectedDateObject, true);
             selectedScore = parseInt(taskToEdit.color || '1');
             categoryButtons.forEach(btn => {
@@ -516,11 +519,11 @@ document.addEventListener('DOMContentLoaded', function() {
         taskTitleInput.value = '';
         timeStartInput.value = '';
         timeEndInput.value = '';
-        let selectedDateObject = new Date();
+        selectedDateObject = new Date();
         flatpickrInstance.setDate(selectedDateObject, true);
         categoryButtons.forEach(btn => btn.classList.remove('active'));
         categoryButtons[0].classList.add('active');
-        let selectedScore = 1;
+        selectedScore = 1;
     }
     async function deleteTask(taskId) { 
         const { error } = await supabase.from('tasks').delete().eq('id', taskId);
@@ -587,6 +590,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!confirm(`آیا مطمئن هستید که می‌خواهید کاربر "${userName}" و تمام تسک‌هایش را حذف کنید؟`)) return;
 
         try {
+            // This requires a server-side function (RPC) in Supabase to bypass RLS for deleting users.
+            // You need to create this function in your Supabase SQL editor.
             const { error } = await supabase.rpc('delete_user_and_data', { user_id_to_delete: userIdToDelete });
             if (error) throw error;
             
@@ -595,7 +600,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         } catch (error) {
             console.error('Error deleting user:', error);
-            alert('خطا در حذف کاربر.');
+            alert('خطا در حذف کاربر. (ممکن است تابع delete_user_and_data در پایگاه داده وجود نداشته باشد)');
         }
     }
     async function openStudentDetailsModal() {
@@ -666,7 +671,6 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             if (!window.supabase) throw new Error('Supabase client not loaded');
             
-            // Assign to the global supabase variable
             supabase = window.supabase;
 
             const { data: { user }, error: authError } = await supabase.auth.getUser();
