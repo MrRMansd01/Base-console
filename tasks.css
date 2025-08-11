@@ -32,6 +32,7 @@
 }
 
 .search-box {
+    width: 95%;
     position: relative;
     z-index: 1; /* Prevents overlap issues */
 }
