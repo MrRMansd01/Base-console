@@ -44,6 +44,8 @@
             <section class="task-section">
                 <div class="toolbar">
                     <button class="btn btn-primary" id="open-task-modal-btn"><i class="fas fa-plus"></i> افزودن تسک</button>
+                    <!-- New Report Button -->
+                    <button class="btn btn-primary" id="generate-report-btn"><i class="fas fa-chart-line"></i> گزارش کار</button>
                     <button class="btn btn-secondary" id="excelUploadBtn" title="آپلود از اکسل"><i class="fas fa-file-excel"></i> آپلود</button>
                     <input type="file" id="excelFileInput" accept=".xlsx, .xls" style="display: none;">
                     <button class="btn btn-secondary" id="view-profile-btn" style="display: none;">
@@ -82,8 +84,39 @@
     </div>
 
     <!-- MODALS SECTION -->
-    <!-- (All modals remain the same as the previous version) -->
+    
+    <!-- Report Generation Modal -->
+    <div id="reportModal" class="modal">
+        <div class="modal-content large">
+            <h2>تهیه گزارش عملکرد</h2>
+            <form id="report-form">
+                <div class="form-group report-controls">
+                    <label for="report-days">گزارش برای</label>
+                    <input type="number" id="report-days" value="7" min="1" max="90">
+                    <label for="report-days">روز گذشته</label>
+                    <button type="submit" class="btn btn-primary">ایجاد گزارش</button>
+                </div>
+            </form>
+            <div class="report-output">
+                <div id="report-content-container">
+                    <h3>گزارش تفصیلی</h3>
+                    <pre id="report-content"></pre>
+                </div>
+                <div id="ai-summary-container">
+                    <h3>خلاصه هوشمند</h3>
+                    <div id="ai-summary-content">
+                        <p class="placeholder">برای مشاهده خلاصه، ابتدا گزارش را ایجاد کنید.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button id="closeReportModalBtn" class="btn btn-secondary">بستن</button>
+            </div>
+        </div>
+    </div>
 
+    <!-- Other Modals (Task, Edit User, etc.) -->
+    <!-- (کدهای پاپ‌آپ‌های دیگر بدون تغییر در اینجا قرار می‌گیرند) -->
     <!-- Task Modal -->
     <div id="taskModal" class="modal">
         <div class="modal-content">
@@ -195,6 +228,7 @@
             </div>
         </div>
     </div>
+
 
     <!-- SCRIPTS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
