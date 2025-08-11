@@ -192,6 +192,113 @@ document.addEventListener('DOMContentLoaded', async function() {
             let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
             const payload = { contents: chatHistory };
             const apiKey = ""; // API key is handled by the environment
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                throw new Error(`API call failed with status: ${response.status}`);
+            }
+
+            const result = await response.json();
+            
+            if (result.candidates && result.candidates.length > 0) {
+                const summary = result.candidates[0].content.parts[0].text;
+                aiSummaryContent.textContent = summary;
+            } else {
+                throw new Error('No content in API response.');
+            }
+
+        } catch (error) {
+            console.error('Error generating report:', error);
+            reportContent.textContent = 'خطا در تولید گزارش.';
+            aiSummaryContent.innerHTML = '<p class="placeholder" style="color: var(--danger-color);">خطا در دریافت خلاصه.</p>';
+        }
+    }
+
+    async function loadTasksForUser(userId, userName, isAdminFlag, filter = 'all') {
+        const tasksContainer = document.querySelector('.tasks-container');
+        try {
+            console.log(`[loadTasksForUser] Loading tasks for user: ${userName} (${userId}) with filter: ${filter}`);
+
+            const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser();
+            if (!currentUser || authError) {
+                console.error('[loadTasksForUser] Authentication error or no user.');
+                return;
+            }
+            if (!isAdminFlag && userId !== currentUser.id) {
+                 console.error('[loadTasksForUser] Permission denied: Cannot view tasks of other users');
+                 tasksContainer.innerHTML = '<div class="error-message" style="text-align: center; padding: 2rem; font-size: 1.2rem; color: #f44336;">دسترسی محدود است</div>';
+                 updateStatsDisplay(0, 0, '0:00');
+                 return;
+            }
+        
+            console.log('[loadTasksForUser] Fetching tasks from Supabase...');
+            let query = supabase
+                .from('tasks')
+                .select('*')
+                .eq('user_id', userId);
+
+            if (filter === 'completed') {
+                query = query.eq('is_completed', true);
+            } else if (filter === 'incomplete') {
+                query = query.eq('is_completed', false);
+            }
+
+            query = query.order('created_at', { ascending: false });
+            
+            const { data: tasks, error } = await query;
+                
+            if (error) {
+                console.error('[loadTasksForUser] Error fetching tasks:', error);
+                tasksContainer.innerHTML = '<div class="error-message">خطا در بارگذاری تسک‌ها</div>';
+                updateStatsDisplay(0, 0, '0:00');
+                return;
+            }
+                
+            console.log('[loadTasksForUser] Fetched tasks:', tasks);
+                
+            let allTasksForStats = [];
+            try {
+                const { data: statsTasks, error: statsError } = await supabase
+                    .from('tasks')
+                    .select('is_completed, time_start, time_end')
+                    .eq('user_id', userId);
+                if (statsError) throw statsError;
+                allTasksForStats = statsTasks || [];
+            } catch (error) {
+                console.error('[loadTasksForUser] Error fetching tasks for stats:', error);
+            }
+
+            tasksContainer.innerHTML = '';
+            
+            let completedCount = 0;
+            let pendingCount = 0;
+            let totalMinutesStudied = 0;
+
+            allTasksForStats.forEach(task => {
+                if (task.is_completed) {
+                    completedCount++;
+                    if (task.time_start && task.time_end) {
+                        try {
+                            const start = new Date(`1970-01-01T${task.time_start}`);
+                            const end = new Date(`1970-01-01T${task.time_end}`);
+                            if (!isNaN(start) && !isNaN(end) && end > start) {
+                                const durationMillis = end - start;
+                                totalMinutesStudied += durationMillis / (1000 * 60);
+                            }
+                        } catch (e) {
+                             console.warn('Could not parse time for stats:', task.time_start, task.time_end, e);
+                        }
+                    }
+                } else {
+                    pendingCount++;
+                }
+            });
 
             const hoursStudied = Math.floor(totalMinutesStudied / 60);
             const minutesStudied = Math.round(totalMinutesStudied % 60);
