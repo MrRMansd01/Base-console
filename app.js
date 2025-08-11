@@ -1,20 +1,19 @@
-// فایل: app.js
-
-document.addEventListener('DOMContentLoaded', async function() {
+document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM loaded, initializing app...');
     
-    // Define global variables early
+    // --- Global Variables ---
     let selectedUserId = null;
     let selectedDateObject = new Date();
     let isAdmin = false;
+    let currentUserRole = null;
     const ADMIN_ID = '23df94b7-412f-4321-a001-591c07fe622e';
-    let supabase; // Define supabase here to make it accessible in the scope
-    let selectedScore = 1; // Keep track of selected score
-    let currentFilter = 'all'; // Keep track of the current filter
-    let editingTaskId = null; // Keep track of the task being edited
-    let userTaskMap = new Map(); // Add userTaskMap definition
+    let supabase; 
+    let selectedScore = 1; 
+    let currentFilter = 'all'; 
+    let editingTaskId = null; 
+    let userTaskMap = new Map(); 
     
-    // --- 2. DOM Element References ---
+    // --- DOM Element References ---
     const taskModal = document.getElementById('taskModal');
     const addTaskBtn = document.getElementById('open-task-modal-btn');
     const submitTaskBtn = document.querySelector('.submit-task-btn');
@@ -26,17 +25,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     const tasksContainer = document.querySelector('.tasks-container');
     const usersContainer = document.getElementById('users-container');
     const userNameElement = document.getElementById('username');
-    const calendarBtn = document.querySelector('.calendar-btn');
-    const userSearchInput = document.querySelector('.search-box .search-input'); // For user search
-    const dayDisplayElement = document.querySelector('.date-display .day');
-    const fullDateDisplayElement = document.querySelector('.date-display .full-date');
-    
-    // --- Hamburger Menu Elements ---
-    const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
-    const sidebar = document.querySelector('.sidebar');
-    const overlay = document.getElementById('overlay');
+    const userSearchInput = document.querySelector('.search-input');
+    const logoutBtn = document.getElementById('logout-btn');
 
-    // --- NEW: Excel Upload Elements ---
     const excelUploadBtn = document.getElementById('excelUploadBtn');
     const excelFileInput = document.getElementById('excelFileInput');
     
@@ -44,21 +35,29 @@ document.addEventListener('DOMContentLoaded', async function() {
     const statsCompletedElement = document.getElementById('stats-completed');
     const statsPendingElement = document.getElementById('stats-pending');
     const statsTotalTimeElement = document.getElementById('stats-total-time');
-    const taskCountHeaderElement = document.querySelector('.task-count-number');
     const modalTitleElement = taskModal?.querySelector('h2');
     let flatpickrInstance = null;
+    
     const editUserModal = document.getElementById('editUserModal');
-    const editUserIdInput = document.getElementById('edit-user-id');
-    const editUserNameInput = document.getElementById('edit-user-name');
-    const editUserFilterInput = document.getElementById('edit-user-filter');
     const saveEditUserBtn = document.getElementById('saveEditUserBtn');
     const cancelEditUserBtn = document.getElementById('cancelEditUserBtn');
+    
     const viewProfileBtn = document.getElementById('view-profile-btn');
     const studentDetailsModal = document.getElementById('studentDetailsModal');
     const saveStudentDetailsBtn = document.getElementById('saveStudentDetailsBtn');
     const cancelStudentDetailsBtn = document.getElementById('cancelStudentDetailsBtn');
     const detailsUserIdInput = document.getElementById('details-user-id');
-    const detailInputs = studentDetailsModal.querySelectorAll('.task-input, textarea');
+    
+    // --- Feedback System DOM Elements ---
+    const feedbackModal = document.getElementById('feedbackModal');
+    const feedbackForm = document.getElementById('feedback-form');
+    const feedbackTaskIdInput = document.getElementById('feedback-task-id');
+    const feedbackTextarea = document.getElementById('feedback-textarea');
+    const skipFeedbackBtn = document.getElementById('skipFeedbackBtn');
+    
+    const viewFeedbackModal = document.getElementById('viewFeedbackModal');
+    const closeViewFeedbackBtn = document.getElementById('closeViewFeedbackBtn');
+    const feedbackDisplayContent = document.getElementById('feedback-display-content');
 
     // --- Report Modal DOM Elements ---
     const generateReportBtn = document.getElementById('generate-report-btn');
@@ -69,48 +68,22 @@ document.addEventListener('DOMContentLoaded', async function() {
     const aiSummaryContent = document.getElementById('ai-summary-content');
     const closeReportModalBtn = document.getElementById('closeReportModalBtn');
 
-    // --- Feedback Modal Elements ---
-    const feedbackModal = document.getElementById('feedbackModal');
-    const closeFeedbackBtn = document.getElementById('closeFeedbackBtn');
-    const feedbackMessage = document.getElementById('feedback-message');
-    
-    // --- View Feedback Modal Elements ---
-    const viewFeedbackModal = document.getElementById('viewFeedbackModal');
-    const closeViewFeedbackBtn = document.getElementById('closeViewFeedbackBtn');
-    const feedbackDisplayContent = document.getElementById('feedback-display-content');
-
-    // --- NEW: View Feedback Modal Functions ---
-    async function openViewFeedbackModal(taskId, taskTitle) {
-        if (!viewFeedbackModal || !feedbackDisplayContent) return;
-
-        // نمایش عنوان تسک در پاپ‌آپ
-        viewFeedbackModal.querySelector('h2').textContent = `بازخورد برای: ${taskTitle}`;
-        feedbackDisplayContent.innerHTML = '<p>در حال بارگذاری بازخورد...</p>';
-        viewFeedbackModal.classList.add('is-open');
-
-        try {
-            const { data, error } = await supabase
-                .from('task_feedback')
-                .select('feedback, created_at')
-                .eq('task_id', taskId)
-                .order('created_at', { ascending: false }); // دریافت آخرین بازخورد
-
-            if (error) throw error;
-
-            if (data && data.length > 0) {
-                const feedbackText = data[0].feedback;
-                feedbackDisplayContent.textContent = feedbackText;
-            } else {
-                feedbackDisplayContent.innerHTML = '<p style="color: #888;">هیچ بازخوردی برای این تسک ثبت نشده است.</p>';
-            }
-        } catch (error) {
-            console.error('Error fetching feedback:', error);
-            feedbackDisplayContent.innerHTML = '<p style="color: #f44336;">خطا در دریافت بازخورد.</p>';
+    // --- Supabase Initialization with Error Handling ---
+    function initializeSupabase() {
+        // چک کردن اینکه آیا supabase در window موجود است
+        if (typeof window.supabase !== 'undefined') {
+            return window.supabase;
         }
-    }
-
-    function closeViewFeedbackModal() {
-        if (viewFeedbackModal) viewFeedbackModal.classList.remove('is-open');
+        
+        // اگر createClient در دسترس است، از آن استفاده کن
+        if (typeof window.supabaseCreateClient !== 'undefined') {
+            const supabaseUrl = 'YOUR_SUPABASE_URL';
+            const supabaseKey = 'YOUR_SUPABASE_ANON_KEY';
+            return window.supabaseCreateClient(supabaseUrl, supabaseKey);
+        }
+        
+        // اگر هیچکدام در دسترس نیست
+        throw new Error('Supabase client is not available. Please ensure Supabase is properly loaded.');
     }
 
     // --- Report Modal Functions ---
@@ -146,7 +119,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         aiSummaryContent.innerHTML = '<p class="placeholder">در حال دریافت خلاصه هوشمند...</p>';
 
         try {
-            // 1. Fetch tasks for the date range
             const fromDate = new Date();
             fromDate.setDate(fromDate.getDate() - days);
 
@@ -165,7 +137,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                 return;
             }
 
-            // 2. Format the report
             let reportText = `گزارش عملکرد ${days} روز گذشته:\n`;
             reportText += '================================\n\n';
             let completedTasks = 0;
@@ -186,12 +157,11 @@ document.addEventListener('DOMContentLoaded', async function() {
 
             reportContent.textContent = reportText;
 
-            // 3. Call Gemini API for summary
             const prompt = `لطفا گزارش عملکرد زیر را که برای یک دانش‌آموز است، به زبان فارسی خلاصه کن. در خلاصه‌ی خود به نقاط قوت، ضعف‌های احتمالی و یک توصیه‌ی کلی اشاره کن:\n\n${reportText}`;
             
             let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
             const payload = { contents: chatHistory };
-            const apiKey = ""; // FIXED: API key must be an empty string.
+            const apiKey = "";
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
 
             const response = await fetch(apiUrl, {
@@ -206,7 +176,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
             const result = await response.json();
             
-            if (result.candidates && result.candidates.length > 0) {
+            if (result.candidates && result.candidates.length > 0 && result.candidates[0].content.parts[0].text) {
                 const summary = result.candidates[0].content.parts[0].text;
                 aiSummaryContent.textContent = summary;
             } else {
@@ -219,80 +189,133 @@ document.addEventListener('DOMContentLoaded', async function() {
             aiSummaryContent.innerHTML = '<p class="placeholder" style="color: var(--danger-color);">خطا در دریافت خلاصه.</p>';
         }
     }
+    
+    // --- Feedback System Functions ---
+    function showFeedbackSubmissionModal(taskId) {
+        if (!feedbackModal) return;
+        feedbackTaskIdInput.value = taskId;
+        feedbackTextarea.value = '';
+        feedbackModal.classList.add('is-open');
+    }
 
-    async function loadTasksForUser(userId, userName, isAdminFlag, filter = 'all') {
-        const tasksContainer = document.querySelector('.tasks-container');
-        try {
-            console.log(`[loadTasksForUser] Loading tasks for user: ${userName} (${userId}) with filter: ${filter}`);
+    function hideFeedbackSubmissionModal() {
+        if (feedbackModal) feedbackModal.classList.remove('is-open');
+    }
 
-            const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser();
-            if (!currentUser || authError) {
-                console.error('[loadTasksForUser] Authentication error or no user.');
-                return;
+    async function handleFeedbackSubmit(e) {
+        e.preventDefault();
+        const taskId = feedbackTaskIdInput.value;
+        const feedback = feedbackTextarea.value.trim();
+        
+        if (!supabase) {
+            alert('خطا: اتصال به پایگاه داده برقرار نیست.');
+            return;
+        }
+
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (!taskId || !user) {
+            alert('خطا: اطلاعات تسک یا کاربر یافت نشد.');
+            return;
+        }
+
+        if (feedback) {
+            try {
+                const { error } = await supabase.from('task_feedback').insert([
+                    { task_id: taskId, user_id: user.id, feedback: feedback }
+                ]);
+                if (error) throw error;
+            } catch (error) {
+                console.error('Error submitting feedback:', error);
+                alert('خطا در ثبت بازخورد.');
             }
+        }
+        
+        hideFeedbackSubmissionModal();
+        await reloadCurrentUserTasks();
+    }
+    
+    async function openViewFeedbackModal(taskId, taskTitle) {
+        if (!viewFeedbackModal || !feedbackDisplayContent) return;
+
+        viewFeedbackModal.querySelector('h2').textContent = `بازخورد برای: ${taskTitle}`;
+        feedbackDisplayContent.innerHTML = '<p>در حال بارگذاری بازخورد...</p>';
+        viewFeedbackModal.classList.add('is-open');
+
+        try {
+            const { data, error } = await supabase
+                .from('task_feedback')
+                .select('feedback, created_at')
+                .eq('task_id', taskId)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            if (data && data.length > 0) {
+                feedbackDisplayContent.textContent = data[0].feedback;
+            } else {
+                feedbackDisplayContent.innerHTML = '<p style="color: #888;">هیچ بازخوردی برای این تسک ثبت نشده است.</p>';
+            }
+        } catch (error) {
+            console.error('Error fetching feedback:', error);
+            feedbackDisplayContent.innerHTML = '<p style="color: #f44336;">خطا در دریافت بازخورد.</p>';
+        }
+    }
+
+    function closeViewFeedbackModal() {
+        if (viewFeedbackModal) viewFeedbackModal.classList.remove('is-open');
+    }
+
+    async function reloadCurrentUserTasks() {
+        if (!supabase) return;
+        
+        const { data: { user } } = await supabase.auth.getUser();
+        const targetUserId = selectedUserId || user.id;
+        const targetUserName = document.querySelector(`.user-item[data-user-id="${targetUserId}"] .user-name`)?.textContent || user.email;
+        if (targetUserId) {
+            await loadTasksForUser(targetUserId, targetUserName, isAdmin, currentFilter);
+            await loadUsers(user, isAdmin);
+        }
+    }
+
+    // --- Core Application Logic ---
+    async function loadTasksForUser(userId, userName, isAdminFlag, filter = 'all') {
+        if (!tasksContainer || !supabase) return;
+        try {
+            const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser();
+            if (!currentUser || authError) return;
+
             if (!isAdminFlag && userId !== currentUser.id) {
-                 console.error('[loadTasksForUser] Permission denied: Cannot view tasks of other users');
                  tasksContainer.innerHTML = '<div class="error-message" style="text-align: center; padding: 2rem; font-size: 1.2rem; color: #f44336;">دسترسی محدود است</div>';
                  updateStatsDisplay(0, 0, '0:00');
                  return;
             }
         
-            console.log('[loadTasksForUser] Fetching tasks from Supabase...');
-            let query = supabase
-                .from('tasks')
-                .select('*')
-                .eq('user_id', userId);
-
-            if (filter === 'completed') {
-                query = query.eq('is_completed', true);
-            } else if (filter === 'incomplete') {
-                query = query.eq('is_completed', false);
-            }
-
+            let query = supabase.from('tasks').select('*').eq('user_id', userId);
+            if (filter === 'completed') query = query.eq('is_completed', true);
+            if (filter === 'incomplete') query = query.eq('is_completed', false);
             query = query.order('created_at', { ascending: false });
             
             const { data: tasks, error } = await query;
+            if (error) throw error;
                 
-            if (error) {
-                console.error('[loadTasksForUser] Error fetching tasks:', error);
-                tasksContainer.innerHTML = '<div class="error-message">خطا در بارگذاری تسک‌ها</div>';
-                updateStatsDisplay(0, 0, '0:00');
-                return;
-            }
-                
-            console.log('[loadTasksForUser] Fetched tasks:', tasks);
-                
-            let allTasksForStats = [];
-            try {
-                const { data: statsTasks, error: statsError } = await supabase
-                    .from('tasks')
-                    .select('is_completed, time_start, time_end')
-                    .eq('user_id', userId);
-                if (statsError) throw statsError;
-                allTasksForStats = statsTasks || [];
-            } catch (error) {
-                console.error('[loadTasksForUser] Error fetching tasks for stats:', error);
-            }
+            const { data: statsTasks, error: statsError } = await supabase
+                .from('tasks')
+                .select('is_completed, time_start, time_end')
+                .eq('user_id', userId);
+            if (statsError) throw statsError;
 
             tasksContainer.innerHTML = '';
             
-            let completedCount = 0;
-            let pendingCount = 0;
-            let totalMinutesStudied = 0;
-
-            allTasksForStats.forEach(task => {
+            let completedCount = 0, pendingCount = 0, totalMinutesStudied = 0;
+            (statsTasks || []).forEach(task => {
                 if (task.is_completed) {
                     completedCount++;
                     if (task.time_start && task.time_end) {
-                        try {
-                            const start = new Date(`1970-01-01T${task.time_start}`);
-                            const end = new Date(`1970-01-01T${task.time_end}`);
-                            if (!isNaN(start) && !isNaN(end) && end > start) {
-                                const durationMillis = end - start;
-                                totalMinutesStudied += durationMillis / (1000 * 60);
-                            }
-                        } catch (e) {
-                             console.warn('Could not parse time for stats:', task.time_start, task.time_end, e);
+                        const start = new Date(`1970-01-01T${task.time_start}`);
+                        const end = new Date(`1970-01-01T${task.time_end}`);
+                        if (!isNaN(start) && !isNaN(end) && end > start) {
+                            totalMinutesStudied += (end - start) / (1000 * 60);
                         }
                     }
                 } else {
@@ -305,22 +328,14 @@ document.addEventListener('DOMContentLoaded', async function() {
             const formattedTotalTime = `${hoursStudied}:${minutesStudied.toString().padStart(2, '0')}`;
 
             if (!tasks || tasks.length === 0) {
-                console.log('[loadTasksForUser] No tasks found for this user/filter.');
-                tasksContainer.innerHTML = '<div class="no-tasks">هیچ تسکی وجود ندارد</div>';
+                tasksContainer.innerHTML = '<p class="no-tasks" style="text-align: center; padding: 2rem; color: #777;">هیچ تسکی برای نمایش وجود ندارد.</p>';
             } else {
-                console.log(`[loadTasksForUser] Found ${tasks.length} tasks. Rendering...`);
                 tasks.forEach(task => {
-                    const taskElement = createTaskElement(task, isAdminFlag);
-                    tasksContainer.appendChild(taskElement);
+                    tasksContainer.appendChild(createTaskElement(task, isAdminFlag, currentUser));
                 });
             }
-             
-            console.log('[loadTasksForUser] Task rendering complete.');
-
             updateStatsDisplay(completedCount, pendingCount, formattedTotalTime);
 
-            const usersContainer = document.getElementById('users-container');
-            const filterButtons = document.querySelectorAll('.filter-btn');
             document.querySelectorAll('.user-item').forEach(item => item.classList.remove('selected'));
             const selectedUserElement = usersContainer.querySelector(`.user-item[data-user-id="${userId}"]`);
             if (selectedUserElement) selectedUserElement.classList.add('selected');
@@ -336,8 +351,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         if (statsCompletedElement) statsCompletedElement.textContent = completed;
         if (statsPendingElement) statsPendingElement.textContent = pending;
         if (statsTotalTimeElement) statsTotalTimeElement.textContent = totalTime;
-        if (taskCountHeaderElement) taskCountHeaderElement.textContent = completed + pending;
-        console.log(`[updateStatsDisplay] Stats updated: Completed=${completed}, Pending=${pending}, TotalTime=${totalTime}`);
     }
 
     async function updateTaskStatus(taskId, isCompleted) {
@@ -348,12 +361,10 @@ document.addEventListener('DOMContentLoaded', async function() {
             }).eq('id', taskId);
             if (error) throw error;
             
-            const { data: { user } } = await supabase.auth.getUser();
-            const targetUserId = selectedUserId || user?.id;
-            const targetUserName = document.querySelector(`.user-item[data-user-id="${targetUserId}"] .user-name`)?.textContent || user?.email;
-            if(targetUserId) {
-                await loadTasksForUser(targetUserId, targetUserName, isAdmin, currentFilter);
-                await loadUsers(user, isAdmin);
+            if (isCompleted) {
+                showFeedbackSubmissionModal(taskId);
+            } else {
+                await reloadCurrentUserTasks();
             }
         } catch (error) {
             console.error('Error updating task status:', error);
@@ -361,12 +372,11 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
     
-    function createTaskElement(task, isAdminFlag) {
+    function createTaskElement(task, isAdminFlag, currentUser) {
         const taskElement = document.createElement('div');
         taskElement.className = `task-item score${task.color || '1'}`;
         taskElement.dataset.id = task.id;
-        const currentUserId = supabase.auth.getUser().data?.user?.id;
-        const canModify = isAdminFlag || task.user_id === currentUserId;
+        const canModify = isAdminFlag || task.user_id === currentUser.id;
 
         const formatTime = (timeStr) => {
             if (!timeStr || !/^\d{2}:\d{2}$/.test(timeStr.substring(0, 5))) return '';
@@ -376,7 +386,6 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         const startTime = formatTime(task.time_start);
         const endTime = formatTime(task.time_end);
-        
         const taskDate = task.date ? new Date(task.date).toLocaleDateString('fa-IR', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
                 
         taskElement.innerHTML = `
@@ -388,9 +397,9 @@ document.addEventListener('DOMContentLoaded', async function() {
             <div class="task-content">
                 <span class="task-title" style="cursor: pointer;" title="مشاهده بازخورد">${task.title}</span>
                 <div class="task-info">
-                    ${taskDate ? `<span class="task-date"><i class="fas fa-calendar"></i> ${taskDate}</span>` : ''}
-                    ${startTime ? `<span class="task-time"><i class="fas fa-clock"></i> ${startTime}</span>` : ''}
-                    ${endTime ? `<span class="task-time"><i class="fas fa-stopwatch"></i> ${endTime}</span>` : ''}
+                    ${taskDate ? `<span><i class="fas fa-calendar"></i> ${taskDate}</span>` : ''}
+                    ${startTime ? `<span><i class="fas fa-clock"></i> ${startTime}</span>` : ''}
+                    ${endTime ? `<span><i class="fas fa-stopwatch"></i> ${endTime}</span>` : ''}
                 </div>
             </div>
             <div class="task-actions">
@@ -400,104 +409,48 @@ document.addEventListener('DOMContentLoaded', async function() {
                 ` : ''} 
             </div>
         `;
-        
-        // --- افزودن Event Listener به عنوان تسک ---
+
         const taskTitleElement = taskElement.querySelector('.task-title');
         taskTitleElement.addEventListener('click', () => {
-            // فقط اگر تسک تکمیل شده باشد، بازخورد را نشان بده
             if (task.is_completed) {
                 openViewFeedbackModal(task.id, task.title);
             } else {
-                // می‌توانید یک پیام دلخواه برای تسک‌های تکمیل‌نشده بگذارید
                 alert('برای مشاهده بازخورد، ابتدا باید تسک را تکمیل کنید.');
             }
         });
             
         if (canModify) {
-            const checkbox = taskElement.querySelector('.task-complete-checkbox');
-            checkbox.addEventListener('change', async () => {
-                await updateTaskStatus(task.id, checkbox.checked);
+            taskElement.querySelector('.task-complete-checkbox').addEventListener('change', (e) => {
+                updateTaskStatus(task.id, e.target.checked);
             });
-
-            const deleteBtn = taskElement.querySelector('.delete-btn');
-            deleteBtn?.addEventListener('click', async () => {
+            taskElement.querySelector('.delete-btn')?.addEventListener('click', () => {
                 if (confirm('آیا مطمئن هستید که می‌خواهید این تسک را حذف کنید؟')) {
-                    await deleteTask(task.id);
+                    deleteTask(task.id);
                 }
             });
-
-            const editBtn = taskElement.querySelector('.edit-btn');
-            editBtn?.addEventListener('click', () => { 
-                showTaskModal(task);
-            });
+            taskElement.querySelector('.edit-btn')?.addEventListener('click', () => showTaskModal(task));
         }
             
         return taskElement;
     }
-        
+
     async function loadUsers(currentUser, isAdminFlag) {
-        const usersContainer = document.getElementById('users-container');
-        if (!usersContainer) {
-            console.error("Error: Could not find element with ID 'users-container'");
-            return;
-        }
+        if (!usersContainer || !supabase) return;
         try {
-            console.log('Loading users...');
-            
-            const { data: users, error: usersError } = await supabase
-                .from('profiles')
-                .select('*')
-                .order('created_at', { ascending: true });
-            
-            if (usersError) {
-                console.error('Error fetching users:', usersError);
-                usersContainer.innerHTML = '<li class="error-message">خطا در بارگذاری کاربران</li>';
-                return;
-            }
+            const { data: users, error: usersError } = await supabase.from('profiles').select('*').order('created_at', { ascending: true });
+            if (usersError) throw usersError;
                 
-            if (!users || users.length === 0) {
-                usersContainer.innerHTML = '<li class="no-users">هیچ کاربری یافت نشد</li>';
-                return;
-            }
-                
-            const { data: allTasks, error: tasksError } = await supabase
-                .from('tasks')
-                .select('user_id, is_completed');
-            
-            if (tasksError) {
-                 console.error('Error fetching tasks for count:', tasksError);
-            }
+            const { data: allTasks, error: tasksError } = await supabase.from('tasks').select('user_id');
+            if (tasksError) console.error('Error fetching tasks for count:', tasksError);
             
             userTaskMap.clear();
-            
             const taskCounts = {};
-            const completedCounts = {};
             if (allTasks) {
                 allTasks.forEach(task => {
-                    if (task.user_id) {
-                        taskCounts[task.user_id] = (taskCounts[task.user_id] || 0) + 1;
-                        if (task.is_completed) {
-                            completedCounts[task.user_id] = (completedCounts[task.user_id] || 0) + 1;
-                        }
-                    }
+                    taskCounts[task.user_id] = (taskCounts[task.user_id] || 0) + 1;
                 });
             }
-            
-            users.forEach(user => {
-                const totalTasks = taskCounts[user.id] || 0;
-                const completedTasks = completedCounts[user.id] || 0;
-                userTaskMap.set(user.id, {
-                    ...user,
-                    taskCount: totalTasks,
-                    completedCount: completedTasks,
-                    incompleteCount: totalTasks - completedTasks
-                });
-            });
-            
-            if (typeof isAdminFlag === 'undefined' || typeof currentUser === 'undefined') {
-                 console.error('Error in loadUsers: isAdmin or user is not defined!');
-                 return;
-            }
+            users.forEach(user => userTaskMap.set(user.id, { ...user, taskCount: taskCounts[user.id] || 0 }));
             
             const usersToDisplay = isAdminFlag ? users : users.filter(u => u.id === currentUser.id);
             
@@ -506,22 +459,15 @@ document.addEventListener('DOMContentLoaded', async function() {
                 const userElement = document.createElement('li');
                 userElement.className = 'user-item';
                 userElement.dataset.userId = userProfile.id;
-
-                if (userProfile.id === selectedUserId) { 
-                    userElement.classList.add('selected');
-                }
-                if (userProfile.id === ADMIN_ID) {
-                    userElement.classList.add('admin-user');
-                }
-                
-                if (userProfile.id === currentUser?.id) { 
-                    userElement.classList.add('current-user');
-                }
+                if (userProfile.id === selectedUserId) userElement.classList.add('selected');
+                if (userProfile.id === currentUser?.id) userElement.classList.add('current-user');
 
                 const userData = userTaskMap.get(userProfile.id);
                 const taskCount = userData ? userData.taskCount : 0;
 
                 userElement.innerHTML = `
+                    <span class="user-name">${userProfile.name || userProfile.username || userProfile.email}</span>
+                    <span class="task-count">${taskCount} تسک</span>
                     <div class="user-actions">
                         <button class="user-action-btn dots-btn" title="گزینه‌ها"><i class="fas fa-ellipsis-v"></i></button>
                         <div class="user-actions-menu">
@@ -529,307 +475,142 @@ document.addEventListener('DOMContentLoaded', async function() {
                             <button class="menu-item delete-user-btn">حذف</button>
                         </div>
                     </div>
-                    <span class="user-name">${userProfile.name || userProfile.username || userProfile.email}</span>
-                    <span class="task-count">${taskCount} تسک</span>
                 `;
                 
-                userElement.addEventListener('click', (event) => {
-                    if (event.target.closest('.user-actions')) return;
+                userElement.addEventListener('click', (e) => {
+                    if (e.target.closest('.user-actions')) return;
                     if (selectedUserId === userProfile.id) return;
-
-                    document.querySelectorAll('.user-item').forEach(item => item.classList.remove('selected'));
-                    userElement.classList.add('selected');
                     selectedUserId = userProfile.id;
-                    const loggedInUserRole = window.userRole;
                     const selectedUserRole = userTaskMap.get(userProfile.id)?.role;
-
-                    if ((loggedInUserRole === 'admin' || loggedInUserRole === 'teacher' || loggedInUserRole === 'consultant') && selectedUserRole === 'student') {
-                        viewProfileBtn.style.display = 'inline-block';
-                    } else {
-                        viewProfileBtn.style.display = 'none';
+                    if (viewProfileBtn) {
+                        viewProfileBtn.style.display = (currentUserRole !== 'student' && selectedUserRole === 'student') ? 'inline-block' : 'none';
                     }
-                    loadTasksForUser(userProfile.id, userProfile.username || userProfile.email, isAdminFlag, userProfile.filter || currentFilter);
-                    
-                    if (window.innerWidth <= 992) {
-                        sidebar.classList.remove('open');
-                        overlay.classList.remove('visible');
-                    }
+                    loadTasksForUser(userProfile.id, userProfile.name, isAdminFlag, currentFilter);
                 });
 
-                const dotsBtn = userElement.querySelector('.dots-btn');
-                const actionsMenu = userElement.querySelector('.user-actions-menu');
-                
-                dotsBtn.addEventListener('click', (event) => {
-                    event.stopPropagation();
-                    document.querySelectorAll('.user-actions-menu.visible').forEach(menu => {
-                        if (menu !== actionsMenu) menu.classList.remove('visible');
+                userElement.querySelector('.dots-btn').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const menu = userElement.querySelector('.user-actions-menu');
+                    document.querySelectorAll('.user-actions-menu.visible').forEach(m => {
+                        if (m !== menu) m.classList.remove('visible');
                     });
-                    actionsMenu.classList.toggle('visible');
+                    menu.classList.toggle('visible');
                 });
-                
-                const editBtn = userElement.querySelector('.edit-user-btn');
-                editBtn.addEventListener('click', (event) => {
-                    event.stopPropagation();
+                userElement.querySelector('.edit-user-btn').addEventListener('click', (e) => {
+                    e.stopPropagation();
                     openEditUserModal(userProfile.id);
                 });
-
-                const deleteBtn = userElement.querySelector('.delete-user-btn');
-                deleteBtn.addEventListener('click', async (event) => {
-                    event.stopPropagation();
-                    await deleteUserProfile(userProfile.id, userProfile.name || userProfile.username || userProfile.email);
+                userElement.querySelector('.delete-user-btn').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteUserProfile(userProfile.id, userProfile.name);
                 });
                 
                 usersContainer.appendChild(userElement);
             });
 
-            document.addEventListener('click', (event) => {
-                if (!event.target.closest('.user-actions')) {
-                    document.querySelectorAll('.user-actions-menu.visible').forEach(menu => menu.classList.remove('visible'));
-                }
-            }, true);
-
             if (!selectedUserId && currentUser) {
                 const currentUserElement = usersContainer.querySelector(`.user-item[data-user-id="${currentUser.id}"]`);
                 if (currentUserElement) currentUserElement.click();
             }
-            
         } catch (error) {
-            console.error('Error details in loadUsers:', error);
+            console.error('Error in loadUsers:', error);
             usersContainer.innerHTML = '<li class="error-message">خطا در بارگذاری کاربران</li>';
         }
     }
     
-    function showTaskModal(taskToEdit = null) {
+    // --- Utility and Modal Functions ---
+    function showTaskModal(taskToEdit = null) { 
         editingTaskId = taskToEdit ? taskToEdit.id : null;
-        
         if (editingTaskId) {
-            console.log('[showTaskModal] Opening in EDIT mode for task:', taskToEdit);
             if (modalTitleElement) modalTitleElement.textContent = 'ویرایش تسک';
-            if (taskTitleInput) taskTitleInput.value = taskToEdit.title;
-            if (timeStartInput) timeStartInput.value = taskToEdit.time_start || '';
-            if (timeEndInput) timeEndInput.value = taskToEdit.time_end || '';
-            
+            taskTitleInput.value = taskToEdit.title;
+            timeStartInput.value = taskToEdit.time_start || '';
+            timeEndInput.value = taskToEdit.time_end || '';
             selectedDateObject = taskToEdit.date ? new Date(taskToEdit.date) : new Date();
-            if (flatpickrInstance) {
-                 flatpickrInstance.setDate(selectedDateObject, true);
-                 taskDateInput.value = selectedDateObject.toLocaleDateString('fa-IR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
-            } else if (taskDateInput) {
-                taskDateInput.value = selectedDateObject.toLocaleDateString('fa-IR');
-            }
-
+            if (flatpickrInstance) flatpickrInstance.setDate(selectedDateObject, true);
             selectedScore = parseInt(taskToEdit.color || '1');
             categoryButtons.forEach(btn => {
                 btn.classList.remove('active');
                 if (parseInt(btn.dataset.score) === selectedScore) btn.classList.add('active');
             });
-
             if (submitTaskBtn) submitTaskBtn.textContent = 'ذخیره تغییرات';
-
         } else {
-            console.log('[showTaskModal] Opening in ADD mode');
-            resetTaskForm(); 
+            resetTaskForm();
         }
-        
-        taskModal.classList.add('is-open');
+        if (taskModal) taskModal.classList.add('is-open');
     }
-    
-    function hideTaskModal() {
-        taskModal.classList.remove('is-open');
-        editingTaskId = null;
-        resetTaskForm(); 
+    function hideTaskModal() { 
+        if (taskModal) taskModal.classList.remove('is-open'); 
     }
-    
     function resetTaskForm() {
-        console.log('[resetTaskForm] Resetting form to ADD mode...');
         editingTaskId = null;
-        
         if (modalTitleElement) modalTitleElement.textContent = 'تسک جدید';
         if (submitTaskBtn) submitTaskBtn.textContent = 'افزودن تسک';
-        
-        if (taskTitleInput) taskTitleInput.value = '';
-        if (timeStartInput) timeStartInput.value = '';
-        if (timeEndInput) timeEndInput.value = '';
-        
-        selectedDateObject = new Date(); 
-        if (flatpickrInstance) {
-            flatpickrInstance.setDate(selectedDateObject, true); 
-             taskDateInput.value = selectedDateObject.toLocaleDateString('fa-IR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
-        } else if (taskDateInput) {
-             taskDateInput.value = selectedDateObject.toLocaleDateString('fa-IR');
-        }
-
-        categoryButtons?.forEach(btn => btn.classList.remove('active'));
-        const firstCategory = categoryButtons?.[0];
-        if (firstCategory) {
-             firstCategory.classList.add('active');
-             selectedScore = parseInt(firstCategory.dataset.score) || 1;
-        } else {
-            selectedScore = 1;
-        }
+        taskTitleInput.value = '';
+        timeStartInput.value = '';
+        timeEndInput.value = '';
+        selectedDateObject = new Date();
+        if (flatpickrInstance) flatpickrInstance.setDate(selectedDateObject, true);
+        categoryButtons.forEach(btn => btn.classList.remove('active'));
+        if (categoryButtons[0]) categoryButtons[0].classList.add('active');
+        selectedScore = 1;
     }
-    
-    async function deleteTask(taskId) {
-        try {
-            const { error } = await supabase.from('tasks').delete().eq('id', taskId);
-            if (error) throw error;
-            
-            const { data: { user } } = await supabase.auth.getUser();
-            const targetUserId = selectedUserId || user?.id;
-            const targetUserName = document.querySelector(`.user-item[data-user-id="${targetUserId}"] .user-name`)?.textContent || user?.email;
-            if (targetUserId) {
-                await loadTasksForUser(targetUserId, targetUserName, isAdmin, currentFilter);
-                await loadUsers(user, isAdmin);
-            }
-        } catch (error) {
-            console.error('Error deleting task:', error);
+    async function deleteTask(taskId) { 
+        if (!supabase) return;
+        const { error } = await supabase.from('tasks').delete().eq('id', taskId);
+        if (error) {
             alert('خطا در حذف تسک');
+        } else {
+            reloadCurrentUserTasks();
         }
     }
-    
     function formatDateToYYYYMMDD(date) {
-        if (!(date instanceof Date) || isNaN(date.getTime())) {
-            console.error('تاریخ نامعتبر است:', date);
-            return null;
-        }
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
+        if (!(date instanceof Date) || isNaN(date.getTime())) return null;
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
     }
-    
     async function clearCompletedTasks() {
+        if (!supabase) return;
         const { data: { user } } = await supabase.auth.getUser();
-        const targetUserId = selectedUserId || user?.id;
-
-        if (!targetUserId) {
-            console.error('Cannot clear completed tasks: No user selected.');
-            return;
-        }
-
-        if (!confirm('آیا مطمئن هستید که می‌خواهید تمام تسک‌های تکمیل شده این کاربر را حذف کنید؟')) {
-            return;
-        }
-
-        console.log(`[clearCompletedTasks] Clearing completed tasks for user ${targetUserId}`);
-        try {
-            const { error } = await supabase.from('tasks').delete().eq('user_id', targetUserId).eq('is_completed', true);
-            if (error) throw error;
-            
-            console.log('[clearCompletedTasks] Completed tasks deleted successfully.');
-            const targetUserName = document.querySelector(`.user-item[data-user-id="${targetUserId}"] .user-name`)?.textContent || user?.email;
-            await loadTasksForUser(targetUserId, targetUserName, isAdmin, currentFilter);
-            await loadUsers(user, isAdmin);
-
-        } catch (error) {
-            console.error('Error clearing completed tasks:', error);
-            alert('خطا در حذف تسک‌های تکمیل شده.');
-        }
+        const targetUserId = selectedUserId || user.id;
+        if (!confirm('آیا مطمئن هستید که می‌خواهید تمام تسک‌های تکمیل شده این کاربر را حذف کنید؟')) return;
+        const { error } = await supabase.from('tasks').delete().eq('user_id', targetUserId).eq('is_completed', true);
+        if (error) alert('خطا در حذف تسک‌های تکمیل شده.');
+        else reloadCurrentUserTasks();
     }
-
     function searchUsers(searchTerm) {
-        const userElements = usersContainer?.querySelectorAll('.user-item');
-        if (!userElements) return;
-        
-        console.log('Searching users for term:', searchTerm);
-        
-        if (!searchTerm) {
-            userElements.forEach(userEl => userEl.style.display = '');
-            return;
-        }
-        
-        userElements.forEach(userEl => {
+        searchTerm = searchTerm.toLowerCase();
+        document.querySelectorAll('#users-container .user-item').forEach(userEl => {
             const userName = userEl.querySelector('.user-name')?.textContent.toLowerCase();
-            if (userName && userName.includes(searchTerm)) {
-                userEl.style.display = '';
-            } else {
-                userEl.style.display = 'none';
-            }
+            userEl.style.display = (userName && userName.includes(searchTerm)) ? 'flex' : 'none';
         });
     }
-
-    async function saveUserEdit() {
-        const userId = document.getElementById('edit-user-id').value;
-        const newName = document.getElementById('edit-user-name').value;
-        const newFilter = document.getElementById('edit-user-filter').value;
-        const newUserRole = document.getElementById('edit-user-role').value;
-
-        if (!userId || !newName) {
-            alert('لطفا تمام فیلدهای ضروری را پر کنید');
-            return;
-        }
-            
-        try {
-            const updates = { 
-                name: newName.trim(), 
-                filter: newFilter, 
-                updated_at: new Date().toISOString() 
-            };
-
-            if (isAdmin) {
-                updates.role = newUserRole;
-            }
-
-            const { error } = await supabase.from('profiles').update(updates).eq('id', userId);
-            if (error) throw error;
-            
-            const { data: verifyData } = await supabase.from('profiles').select('*').eq('id', userId).single();
-            if (verifyData) {
-                const currentUserData = userTaskMap.get(userId);
-                if (currentUserData) {
-                    userTaskMap.set(userId, { ...currentUserData, name: verifyData.name, filter: verifyData.filter, role: verifyData.role });
-                }
-            }
-
-            hideEditUserModal();
-            alert('اطلاعات کاربر با موفقیت بروزرسانی شد');
-            const { data: { user: currentUser } } = await supabase.auth.getUser();
-            await loadUsers(currentUser, isAdmin);
-            if (selectedUserId === userId) {
-                await loadTasksForUser(userId, verifyData?.name || updates.name, isAdmin, verifyData?.filter || updates.filter);
-            }
-        } catch (error) {
-            console.error('Error updating user:', error);
-            alert('خطا در بروزرسانی اطلاعات کاربر');
-        }
-    }
-
     function openEditUserModal(userId) {
         const editUserRoleGroup = document.getElementById('edit-user-role-group');
         const editUserRoleSelect = document.getElementById('edit-user-role');
+        const editUserIdInput = document.getElementById('edit-user-id');
+        const editUserNameInput = document.getElementById('edit-user-name');
 
-        if (isAdmin) {
+        if (isAdmin && editUserRoleGroup) {
             editUserRoleGroup.style.display = 'block';
-        } else {
+        } else if (editUserRoleGroup) {
             editUserRoleGroup.style.display = 'none';
         }
 
-        supabase.from('profiles').select('*').eq('id', userId).single().then(({ data: freshData, error }) => {
-            if (error) {
-                console.error('Error fetching fresh user data:', error);
-                return;
+        const userData = userTaskMap.get(userId);
+        if(userData && editUserIdInput && editUserNameInput) {
+            editUserIdInput.value = userId;
+            editUserNameInput.value = userData.name || '';
+            if (isAdmin && editUserRoleSelect) {
+                editUserRoleSelect.value = userData.role || 'student';
             }
-            
-            if (editUserIdInput) editUserIdInput.value = userId;
-            if (editUserNameInput) editUserNameInput.value = freshData?.name || '';
-            if (editUserFilterInput) {
-                editUserFilterInput.value = freshData?.filter || '';
-                editUserFilterInput.style.direction = 'ltr';
-            }
-            
-            if (isAdmin && freshData?.role) {
-                editUserRoleSelect.value = freshData.role;
-            }
-
             if (editUserModal) editUserModal.classList.add('is-open');
-
-        });
+        }
     }
-
-    function hideEditUserModal() {
+    function hideEditUserModal() { 
         if (editUserModal) editUserModal.classList.remove('is-open');
     }
-
     async function deleteUserProfile(userIdToDelete, userName) {
+        if (!supabase) return;
         const { data: { user: currentUser } } = await supabase.auth.getUser();
         if (userIdToDelete === currentUser?.id) {
             alert('شما نمی‌توانید حساب کاربری خودتان را حذف کنید.');
@@ -839,51 +620,133 @@ document.addEventListener('DOMContentLoaded', async function() {
             alert('امکان حذف کاربر ادمین وجود ندارد.');
             return;
         }
-                
-        if (!confirm(`آیا مطمئن هستید که می‌خواهید کاربر "${userName}" و تمام تسک‌هایش را حذف کنید؟ این عمل غیرقابل بازگشت است.`)) {
-            return;
-        }
+        if (!confirm(`آیا مطمئن هستید که می‌خواهید کاربر "${userName}" و تمام تسک‌هایش را حذف کنید؟`)) return;
 
         try {
-            const { error: taskError } = await supabase.from('tasks').delete().eq('user_id', userIdToDelete);
-            if (taskError) {
-                 alert('خطا در حذف تسک‌های کاربر. پروفایل حذف نشد.');
-                 return;
-            }
-            
-            const { error: profileError } = await supabase.from('profiles').delete().eq('id', userIdToDelete);
-            if (profileError) throw profileError;
+            const { error } = await supabase.rpc('delete_user_and_data', { user_id_to_delete: userIdToDelete });
+            if (error) throw error;
             
             if (selectedUserId === userIdToDelete) selectedUserId = currentUser.id;
             await loadUsers(currentUser, isAdmin);
 
         } catch (error) {
-            console.error('Error deleting user profile or tasks:', error);
-            alert('خطا در حذف کاربر یا تسک‌هایش.');
+            console.error('Error deleting user:', error);
+            alert('خطا در حذف کاربر. (ممکن است تابع delete_user_and_data در پایگاه داده وجود نداشته باشد)');
+        }
+    }
+    async function openStudentDetailsModal() {
+        if (!selectedUserId || !supabase) return;
+        const { data: profile, error } = await supabase.from('profiles').select('*').eq('id', selectedUserId).single();
+        if (error) {
+            alert('خطا در دریافت اطلاعات پروفایل.');
+            return;
+        }
+        
+        const detailsFields = {
+            'details-fullname': profile.full_name || '',
+            'details-father-name': profile.father_name || '',
+            'details-mother-name': profile.mother_name || '',
+            'details-father-phone': profile.father_phone || '',
+            'details-mother-phone': profile.mother_phone || '',
+            'details-home-phone': profile.home_phone || '',
+            'details-description': profile.description || ''
+        };
+
+        Object.entries(detailsFields).forEach(([id, value]) => {
+            const element = document.getElementById(id);
+            if (element) element.value = value;
+        });
+
+        if (detailsUserIdInput) detailsUserIdInput.value = profile.id;
+
+        const isEditable = currentUserRole === 'admin';
+        if (saveStudentDetailsBtn) saveStudentDetailsBtn.style.display = isEditable ? 'inline-block' : 'none';
+        if (studentDetailsModal) {
+            studentDetailsModal.querySelectorAll('input, textarea').forEach(input => input.readOnly = !isEditable);
+            studentDetailsModal.classList.add('is-open');
+        }
+    }
+    function closeStudentDetailsModal() { 
+        if (studentDetailsModal) studentDetailsModal.classList.remove('is-open');
+    }
+    async function saveStudentDetails() {
+        if (!supabase) return;
+        const userId = detailsUserIdInput?.value;
+        if (!userId) return;
+        
+        const updates = {
+            full_name: document.getElementById('details-fullname')?.value || '',
+            father_name: document.getElementById('details-father-name')?.value || '',
+            mother_name: document.getElementById('details-mother-name')?.value || '',
+            father_phone: document.getElementById('details-father-phone')?.value || '',
+            mother_phone: document.getElementById('details-mother-phone')?.value || '',
+            home_phone: document.getElementById('details-home-phone')?.value || '',
+            description: document.getElementById('details-description')?.value || '',
+            updated_at: new Date().toISOString()
+        };
+        const { error } = await supabase.from('profiles').update(updates).eq('id', userId);
+        if (error) {
+            alert('خطا در ذخیره تغییرات.');
+        } else {
+            alert('تغییرات با موفقیت ذخیره شد.');
+            closeStudentDetailsModal();
+        }
+    }
+    async function saveUserEdit() {
+        if (!supabase) return;
+        const editUserIdInput = document.getElementById('edit-user-id');
+        const editUserNameInput = document.getElementById('edit-user-name');
+        const editUserRoleSelect = document.getElementById('edit-user-role');
+        
+        const userId = editUserIdInput?.value;
+        const newName = editUserNameInput?.value;
+        const newUserRole = editUserRoleSelect?.value;
+        
+        if (!userId || !newName) return alert('لطفا نام کاربر را وارد کنید.');
+        const updates = { name: newName.trim() };
+        if (isAdmin && newUserRole) updates.role = newUserRole;
+        const { error } = await supabase.from('profiles').update(updates).eq('id', userId);
+        if (error) {
+            alert('خطا در بروزرسانی کاربر.');
+        } else {
+            hideEditUserModal();
+            const { data: { user } } = await supabase.auth.getUser();
+            await loadUsers(user, isAdmin);
         }
     }
 
-    async function createTask(taskData) {
-        try {
-            const { data, error } = await supabase.from('tasks').insert([taskData]).select().single();
-            if (error) throw error;
-            return data;
-        } catch (error) {
-            console.error('Error creating task:', error);
-            alert('خطا در ایجاد تسک');
-            throw error;
+    // --- Wait for Supabase to be Available ---
+    async function waitForSupabase(maxAttempts = 10, delay = 100) {
+        for (let i = 0; i < maxAttempts; i++) {
+            try {
+                supabase = initializeSupabase();
+                // Test the connection
+                await supabase.auth.getUser();
+                return true;
+            } catch (error) {
+                console.log(`Attempt ${i + 1}: Supabase not ready yet...`, error.message);
+                if (i < maxAttempts - 1) {
+                    await new Promise(resolve => setTimeout(resolve, delay * (i + 1)));
+                }
+            }
         }
+        return false;
     }
 
+    // --- App Initialization ---
     async function initializeApp() {
         try {
-            if (!window.supabase) {
-                throw new Error('Supabase client not loaded');
+            // Wait for Supabase to be available
+            const supabaseReady = await waitForSupabase();
+            if (!supabaseReady) {
+                throw new Error('Supabase client could not be initialized after multiple attempts');
             }
-            supabase = window.supabase;
+
+            console.log('Supabase initialized successfully');
 
             const { data: { user }, error: authError } = await supabase.auth.getUser();
             if (authError || !user) {
+                console.log('User not authenticated, redirecting to login...');
                 window.location.href = '/login.html';
                 return;
             }
@@ -891,21 +754,25 @@ document.addEventListener('DOMContentLoaded', async function() {
             const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
             if (userNameElement) userNameElement.textContent = profile?.name || user.email;
             isAdmin = user.id === ADMIN_ID;
-            currentUserRole = profile.role;
+            currentUserRole = profile?.role || 'student';
             
             await loadUsers(user, isAdmin);
             
-            flatpickrInstance = flatpickr(document.querySelector('.flatpickr-wrapper'), {
-                locale: "fa",
-                dateFormat: "Y-m-d",
-                altInput: true,
-                altFormat: "l ، j F Y",
-                wrap: true,
-                defaultDate: new Date(),
-                onChange: (selectedDates) => {
-                    if (selectedDates.length > 0) selectedDateObject = selectedDates[0];
-                },
-            });
+            // Initialize Flatpickr only if the wrapper exists
+            const flatpickrWrapper = document.querySelector('.flatpickr-wrapper');
+            if (flatpickrWrapper && typeof flatpickr !== 'undefined') {
+                flatpickrInstance = flatpickr(flatpickrWrapper, {
+                    locale: "fa",
+                    dateFormat: "Y-m-d",
+                    altInput: true,
+                    altFormat: "l ، j F Y",
+                    wrap: true,
+                    defaultDate: new Date(),
+                    onChange: (selectedDates) => {
+                        if (selectedDates.length > 0) selectedDateObject = selectedDates[0];
+                    },
+                });
+            }
 
             // --- Event Listeners Setup ---
             addTaskBtn?.addEventListener('click', () => showTaskModal());
@@ -916,10 +783,11 @@ document.addEventListener('DOMContentLoaded', async function() {
             });
             closeViewFeedbackBtn?.addEventListener('click', closeViewFeedbackModal);
             
-            generateReportBtn.addEventListener('click', openReportModal);
-            closeReportModalBtn.addEventListener('click', closeReportModal);
-            reportForm.addEventListener('submit', handleReportGeneration);
+            generateReportBtn?.addEventListener('click', openReportModal);
+            closeReportModalBtn?.addEventListener('click', closeReportModal);
+            reportForm?.addEventListener('submit', handleReportGeneration);
 
+            // Window click events
             window.addEventListener('click', (e) => {
                 if (e.target == feedbackModal) hideFeedbackSubmissionModal();
                 if (e.target == viewFeedbackModal) closeViewFeedbackModal();
@@ -931,6 +799,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                     document.querySelectorAll('.user-actions-menu.visible').forEach(m => m.classList.remove('visible'));
                 }
             });
+
+            // Keyboard events
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') {
                     hideFeedbackSubmissionModal();
@@ -942,6 +812,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 }
             });
 
+            // Category buttons
             categoryButtons.forEach(btn => {
                 btn.addEventListener('click', () => {
                     categoryButtons.forEach(b => b.classList.remove('active'));
@@ -949,6 +820,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                     selectedScore = parseInt(btn.getAttribute('data-score'));
                 });
             });
+
+            // Filter buttons
             document.querySelectorAll('.filter-btn').forEach(button => {
                 button.addEventListener('click', async () => {
                     document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
@@ -957,6 +830,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                     await reloadCurrentUserTasks();
                 });
             });
+
+            // Submit task button
             submitTaskBtn?.addEventListener('click', async () => {
                  const taskTitle = taskTitleInput?.value.trim();
                  if (!taskTitle) return alert('لطفا عنوان تسک را وارد کنید');
@@ -983,9 +858,12 @@ document.addEventListener('DOMContentLoaded', async function() {
                      hideTaskModal();
                      await reloadCurrentUserTasks();
                  } catch (error) {
+                     console.error('Error saving task:', error);
                      alert('خطا در ثبت تسک');
                  }
             });
+
+            // Other event listeners
             userSearchInput?.addEventListener('input', (e) => searchUsers(e.target.value));
             clearCompletedBtn?.addEventListener('click', clearCompletedTasks);
             viewProfileBtn?.addEventListener('click', openStudentDetailsModal);
@@ -998,11 +876,30 @@ document.addEventListener('DOMContentLoaded', async function() {
                 window.location.href = '/login.html';
             });
 
+            console.log('App initialized successfully');
+
         } catch (error) {
             console.error('Error initializing app:', error);
-            document.body.innerHTML = '<h1>خطا در بارگذاری برنامه. لطفا صفحه را دوباره بارگذاری کنید.</h1>';
+            // Show a more user-friendly error message
+            document.body.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: center; height: 100vh; background: #f5f5f5;">
+                    <div style="text-align: center; padding: 2rem; background: white; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                        <h2 style="color: #f44336; margin-bottom: 1rem;">خطا در بارگذاری برنامه</h2>
+                        <p style="color: #666; margin-bottom: 1rem;">مشکل در اتصال به سرویس. لطفا:</p>
+                        <ul style="text-align: right; color: #666; margin-bottom: 1rem;">
+                            <li>اتصال اینترنت خود را بررسی کنید</li>
+                            <li>صفحه را دوباره بارگذاری کنید</li>
+                            <li>اگر مشکل ادامه داشت، با پشتیبانی تماس بگیرید</li>
+                        </ul>
+                        <button onclick="location.reload()" style="padding: 0.5rem 1rem; background: #2196F3; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                            بارگذاری مجدد
+                        </button>
+                    </div>
+                </div>
+            `;
         }
     }
 
+    // Start the application
     initializeApp();
 });
