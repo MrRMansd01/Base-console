@@ -1,14 +1,12 @@
-document.addEventListener('DOMContentLoaded', async function() {
+document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM loaded, initializing app...');
     
     // --- Global Variables ---
     let selectedUserId = null;
-    let selectedDateObject = new Date();
     let isAdmin = false;
     let currentUserRole = null;
     const ADMIN_ID = '23df94b7-412f-4321-a001-591c07fe622e';
     let supabase; 
-    let selectedScore = 1; 
     let currentFilter = 'all'; 
     let editingTaskId = null; 
     let userTaskMap = new Map(); 
@@ -36,7 +34,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     const statsPendingElement = document.getElementById('stats-pending');
     const statsTotalTimeElement = document.getElementById('stats-total-time');
     const modalTitleElement = taskModal?.querySelector('h2');
-    let flatpickrInstance = null;
+    let flatpickrInstance;
     
     const editUserModal = document.getElementById('editUserModal');
     const saveEditUserBtn = document.getElementById('saveEditUserBtn');
@@ -48,7 +46,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     const cancelStudentDetailsBtn = document.getElementById('cancelStudentDetailsBtn');
     const detailsUserIdInput = document.getElementById('details-user-id');
     
-    // --- Feedback System DOM Elements ---
     const feedbackModal = document.getElementById('feedbackModal');
     const feedbackForm = document.getElementById('feedback-form');
     const feedbackTaskIdInput = document.getElementById('feedback-task-id');
@@ -59,7 +56,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     const closeViewFeedbackBtn = document.getElementById('closeViewFeedbackBtn');
     const feedbackDisplayContent = document.getElementById('feedback-display-content');
 
-    // --- Report Modal DOM Elements ---
     const generateReportBtn = document.getElementById('generate-report-btn');
     const reportModal = document.getElementById('reportModal');
     const reportForm = document.getElementById('report-form');
@@ -305,7 +301,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 tasksContainer.innerHTML = '<p class="no-tasks" style="text-align: center; padding: 2rem; color: #777;">هیچ تسکی برای نمایش وجود ندارد.</p>';
             } else {
                 tasks.forEach(task => {
-                    tasksContainer.appendChild(createTaskElement(task, isAdminFlag));
+                    tasksContainer.appendChild(createTaskElement(task, isAdminFlag, currentUser));
                 });
             }
             updateStatsDisplay(completedCount, pendingCount, formattedTotalTime);
@@ -346,11 +342,10 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
     
-    function createTaskElement(task, isAdminFlag) {
+    function createTaskElement(task, isAdminFlag, currentUser) {
         const taskElement = document.createElement('div');
         taskElement.className = `task-item score${task.color || '1'}`;
         taskElement.dataset.id = task.id;
-        const { data: { user: currentUser } } = supabase.auth.getUser();
         const canModify = isAdminFlag || task.user_id === currentUser.id;
 
         const formatTime = (timeStr) => {
@@ -494,12 +489,13 @@ document.addEventListener('DOMContentLoaded', async function() {
     // --- Utility and Modal Functions ---
     function showTaskModal(taskToEdit = null) { 
         editingTaskId = taskToEdit ? taskToEdit.id : null;
+        let selectedScore = 1;
         if (editingTaskId) {
             modalTitleElement.textContent = 'ویرایش تسک';
             taskTitleInput.value = taskToEdit.title;
             timeStartInput.value = taskToEdit.time_start || '';
             timeEndInput.value = taskToEdit.time_end || '';
-            selectedDateObject = taskToEdit.date ? new Date(taskToEdit.date) : new Date();
+            let selectedDateObject = taskToEdit.date ? new Date(taskToEdit.date) : new Date();
             flatpickrInstance.setDate(selectedDateObject, true);
             selectedScore = parseInt(taskToEdit.color || '1');
             categoryButtons.forEach(btn => {
@@ -520,11 +516,11 @@ document.addEventListener('DOMContentLoaded', async function() {
         taskTitleInput.value = '';
         timeStartInput.value = '';
         timeEndInput.value = '';
-        selectedDateObject = new Date();
+        let selectedDateObject = new Date();
         flatpickrInstance.setDate(selectedDateObject, true);
         categoryButtons.forEach(btn => btn.classList.remove('active'));
         categoryButtons[0].classList.add('active');
-        selectedScore = 1;
+        let selectedScore = 1;
     }
     async function deleteTask(taskId) { 
         const { error } = await supabase.from('tasks').delete().eq('id', taskId);
@@ -591,7 +587,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         if (!confirm(`آیا مطمئن هستید که می‌خواهید کاربر "${userName}" و تمام تسک‌هایش را حذف کنید؟`)) return;
 
         try {
-            // Admin RPC call to delete user
             const { error } = await supabase.rpc('delete_user_and_data', { user_id_to_delete: userIdToDelete });
             if (error) throw error;
             
@@ -666,128 +661,135 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
 
-    // --- App Initialization and Event Listeners ---
-    try {
-        if (!window.supabase) throw new Error('Supabase client not loaded');
-        
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        if (authError || !user) {
-            window.location.href = '/login.html';
-            return;
-        }
-        
-        const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-        if (userNameElement) userNameElement.textContent = profile?.name || user.email;
-        isAdmin = user.id === ADMIN_ID;
-        currentUserRole = profile.role;
-        
-        await loadUsers(user, isAdmin);
-        
-        flatpickrInstance = flatpickr(document.querySelector('.flatpickr-wrapper'), {
-            locale: "fa",
-            dateFormat: "Y-m-d",
-            altInput: true,
-            altFormat: "l ، j F Y",
-            wrap: true,
-            defaultDate: selectedDateObject,
-            onChange: (selectedDates) => {
-                if (selectedDates.length > 0) selectedDateObject = selectedDates[0];
-            },
-        });
+    // --- App Initialization ---
+    async function initializeApp() {
+        try {
+            if (!window.supabase) throw new Error('Supabase client not loaded');
+            
+            // Assign to the global supabase variable
+            supabase = window.supabase;
 
-        // --- Event Listeners Setup ---
-        addTaskBtn?.addEventListener('click', () => showTaskModal());
-        feedbackForm?.addEventListener('submit', handleFeedbackSubmit);
-        skipFeedbackBtn?.addEventListener('click', async () => {
-            hideFeedbackSubmissionModal();
-            await reloadCurrentUserTasks();
-        });
-        closeViewFeedbackBtn?.addEventListener('click', closeViewFeedbackModal);
-        
-        generateReportBtn.addEventListener('click', openReportModal);
-        closeReportModalBtn.addEventListener('click', closeReportModal);
-        reportForm.addEventListener('submit', handleReportGeneration);
-
-        window.addEventListener('click', (e) => {
-            if (e.target == feedbackModal) hideFeedbackSubmissionModal();
-            if (e.target == viewFeedbackModal) closeViewFeedbackModal();
-            if (e.target == taskModal) hideTaskModal();
-            if (e.target == editUserModal) hideEditUserModal();
-            if (e.target == studentDetailsModal) closeStudentDetailsModal();
-            if (e.target == reportModal) closeReportModal();
-            if (!e.target.closest('.user-actions')) {
-                document.querySelectorAll('.user-actions-menu.visible').forEach(m => m.classList.remove('visible'));
+            const { data: { user }, error: authError } = await supabase.auth.getUser();
+            if (authError || !user) {
+                window.location.href = '/login.html';
+                return;
             }
-        });
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                hideFeedbackSubmissionModal();
-                closeViewFeedbackModal();
-                hideTaskModal();
-                hideEditUserModal();
-                closeStudentDetailsModal();
-                closeReportModal();
-            }
-        });
-
-        categoryButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                categoryButtons.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                selectedScore = parseInt(btn.getAttribute('data-score'));
+            
+            const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+            if (userNameElement) userNameElement.textContent = profile?.name || user.email;
+            isAdmin = user.id === ADMIN_ID;
+            currentUserRole = profile.role;
+            
+            await loadUsers(user, isAdmin);
+            
+            flatpickrInstance = flatpickr(document.querySelector('.flatpickr-wrapper'), {
+                locale: "fa",
+                dateFormat: "Y-m-d",
+                altInput: true,
+                altFormat: "l ، j F Y",
+                wrap: true,
+                defaultDate: new Date(),
+                onChange: (selectedDates) => {
+                    if (selectedDates.length > 0) selectedDateObject = selectedDates[0];
+                },
             });
-        });
-        document.querySelectorAll('.filter-btn').forEach(button => {
-            button.addEventListener('click', async () => {
-                document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-                button.classList.add('active');
-                currentFilter = button.dataset.filter;
+
+            // --- Event Listeners Setup ---
+            addTaskBtn?.addEventListener('click', () => showTaskModal());
+            feedbackForm?.addEventListener('submit', handleFeedbackSubmit);
+            skipFeedbackBtn?.addEventListener('click', async () => {
+                hideFeedbackSubmissionModal();
                 await reloadCurrentUserTasks();
             });
-        });
-        submitTaskBtn?.addEventListener('click', async () => {
-             const taskTitle = taskTitleInput?.value.trim();
-             if (!taskTitle) return alert('لطفا عنوان تسک را وارد کنید');
-             const formattedDate = formatDateToYYYYMMDD(selectedDateObject);
-             if (!formattedDate) return alert('لطفا تاریخ معتبر انتخاب کنید');
-             const { data: { user } } = await supabase.auth.getUser();
-             const targetUserId = selectedUserId || user.id;
-             const taskData = {
-                 title: taskTitle,
-                 date: formattedDate,
-                 time_start: timeStartInput?.value || null,
-                 time_end: timeEndInput?.value || null,
-                 color: selectedScore,
-                 updated_at: new Date().toISOString()
-             };
-             try {
-                 if (editingTaskId) {
-                     const { error } = await supabase.from('tasks').update(taskData).eq('id', editingTaskId);
-                     if (error) throw error;
-                 } else {
-                     const { error } = await supabase.from('tasks').insert([{ ...taskData, user_id: targetUserId, created_at: new Date().toISOString() }]);
-                     if (error) throw error;
-                 }
-                 hideTaskModal();
-                 await reloadCurrentUserTasks();
-             } catch (error) {
-                 alert('خطا در ثبت تسک');
-             }
-        });
-        userSearchInput?.addEventListener('input', (e) => searchUsers(e.target.value));
-        clearCompletedBtn?.addEventListener('click', clearCompletedTasks);
-        viewProfileBtn?.addEventListener('click', openStudentDetailsModal);
-        cancelStudentDetailsBtn?.addEventListener('click', closeStudentDetailsModal);
-        saveStudentDetailsBtn?.addEventListener('click', saveStudentDetails);
-        saveEditUserBtn?.addEventListener('click', saveUserEdit);
-        cancelEditUserBtn?.addEventListener('click', hideEditUserModal);
-        logoutBtn?.addEventListener('click', async () => {
-            await supabase.auth.signOut();
-            window.location.href = '/login.html';
-        });
+            closeViewFeedbackBtn?.addEventListener('click', closeViewFeedbackModal);
+            
+            generateReportBtn.addEventListener('click', openReportModal);
+            closeReportModalBtn.addEventListener('click', closeReportModal);
+            reportForm.addEventListener('submit', handleReportGeneration);
 
-    } catch (error) {
-        console.error('Error initializing app:', error);
-        document.body.innerHTML = '<h1>خطا در بارگذاری برنامه. لطفا صفحه را دوباره بارگذاری کنید.</h1>';
+            window.addEventListener('click', (e) => {
+                if (e.target == feedbackModal) hideFeedbackSubmissionModal();
+                if (e.target == viewFeedbackModal) closeViewFeedbackModal();
+                if (e.target == taskModal) hideTaskModal();
+                if (e.target == editUserModal) hideEditUserModal();
+                if (e.target == studentDetailsModal) closeStudentDetailsModal();
+                if (e.target == reportModal) closeReportModal();
+                if (!e.target.closest('.user-actions')) {
+                    document.querySelectorAll('.user-actions-menu.visible').forEach(m => m.classList.remove('visible'));
+                }
+            });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    hideFeedbackSubmissionModal();
+                    closeViewFeedbackModal();
+                    hideTaskModal();
+                    hideEditUserModal();
+                    closeStudentDetailsModal();
+                    closeReportModal();
+                }
+            });
+
+            categoryButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    categoryButtons.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    selectedScore = parseInt(btn.getAttribute('data-score'));
+                });
+            });
+            document.querySelectorAll('.filter-btn').forEach(button => {
+                button.addEventListener('click', async () => {
+                    document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+                    currentFilter = button.dataset.filter;
+                    await reloadCurrentUserTasks();
+                });
+            });
+            submitTaskBtn?.addEventListener('click', async () => {
+                 const taskTitle = taskTitleInput?.value.trim();
+                 if (!taskTitle) return alert('لطفا عنوان تسک را وارد کنید');
+                 const formattedDate = formatDateToYYYYMMDD(selectedDateObject);
+                 if (!formattedDate) return alert('لطفا تاریخ معتبر انتخاب کنید');
+                 const { data: { user } } = await supabase.auth.getUser();
+                 const targetUserId = selectedUserId || user.id;
+                 const taskData = {
+                     title: taskTitle,
+                     date: formattedDate,
+                     time_start: timeStartInput?.value || null,
+                     time_end: timeEndInput?.value || null,
+                     color: selectedScore,
+                     updated_at: new Date().toISOString()
+                 };
+                 try {
+                     if (editingTaskId) {
+                         const { error } = await supabase.from('tasks').update(taskData).eq('id', editingTaskId);
+                         if (error) throw error;
+                     } else {
+                         const { error } = await supabase.from('tasks').insert([{ ...taskData, user_id: targetUserId, created_at: new Date().toISOString() }]);
+                         if (error) throw error;
+                     }
+                     hideTaskModal();
+                     await reloadCurrentUserTasks();
+                 } catch (error) {
+                     alert('خطا در ثبت تسک');
+                 }
+            });
+            userSearchInput?.addEventListener('input', (e) => searchUsers(e.target.value));
+            clearCompletedBtn?.addEventListener('click', clearCompletedTasks);
+            viewProfileBtn?.addEventListener('click', openStudentDetailsModal);
+            cancelStudentDetailsBtn?.addEventListener('click', closeStudentDetailsModal);
+            saveStudentDetailsBtn?.addEventListener('click', saveStudentDetails);
+            saveEditUserBtn?.addEventListener('click', saveUserEdit);
+            cancelEditUserBtn?.addEventListener('click', hideEditUserModal);
+            logoutBtn?.addEventListener('click', async () => {
+                await supabase.auth.signOut();
+                window.location.href = '/login.html';
+            });
+
+        } catch (error) {
+            console.error('Error initializing app:', error);
+            document.body.innerHTML = '<h1>خطا در بارگذاری برنامه. لطفا صفحه را دوباره بارگذاری کنید.</h1>';
+        }
     }
+
+    initializeApp();
 });
