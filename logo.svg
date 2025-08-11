@@ -1,7 +1,8 @@
-<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="64" height="64" rx="12" fill="#26a69a"/>
-  <path d="M24 22H40V28H28V34H38V40H24V22Z" fill="white"/>
-  <circle cx="32" cy="46" r="2" fill="white"/>
-  <circle cx="38" cy="46" r="2" fill="white"/>
-  <circle cx="44" cy="46" r="2" fill="white"/>
+<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <title>لوگوی شماره ۱: کتاب و پایه</title>
+  <style>
+    .base-color { fill: #26a69a; }
+  </style>
+  <path class="base-color" d="M50 15 C 30 15, 20 30, 20 50 L 20 75 L 50 65 L 80 75 L 80 50 C 80 30, 70 15, 50 15 Z M 50 25 C 65 25, 70 35, 70 50 L 70 65 L 50 55 L 30 65 L 30 50 C 30 35, 35 25, 50 25 Z" />
+  <rect class="base-color" x="15" y="80" width="70" height="8" rx="4"/>
 </svg>
