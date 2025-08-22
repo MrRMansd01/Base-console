@@ -23,29 +23,35 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!widgets.has(key)) widgets.set(key, createWidget(title, icon, link));
         };
 
+        // --- ویجت‌های مشترک برای همه ---
         addWidget('tasks', 'مدیریت وظایف', 'fa-tasks', '/index.html');
         addWidget('profile', 'پروفایل من', 'fa-user-circle', '/profile.html');
 
+        // --- ویجت‌های دانش‌آموز ---
         if (role === 'student') {
             addWidget('report_card', 'کارنامه من', 'fa-graduation-cap', '/report-card.html');
         }
+        // --- ویجت‌های مدیر، معلم و مشاور ---
         if (['admin', 'teacher', 'consultant'].includes(role)) {
             addWidget('class_report', 'گزارش کلاس', 'fa-chart-bar', '/reports.html');
             addWidget('enter_scores', 'ثبت نمرات', 'fa-edit', '/scores.html');
         }
+        // --- ویجت‌های مدیر و مشاور ---
         if (['admin', 'consultant'].includes(role)) {
             addWidget('manage_subjects', 'مدیریت درس‌ها', 'fa-book', '/subjects.html');
             addWidget('manage_exams', 'مدیریت آزمون‌ها', 'fa-file-signature', '/exams.html');
         }
-        if (role === 'admin') {
-             // Admin doesn't manage users directly anymore in this model
-        }
+        
+        // --- ویجت‌های اختصاصی ادمین کل ---
         if (role === 'super_admin') {
             addWidget('manage_users', 'مدیریت کاربران', 'fa-users-cog', '/users.html');
-            // Add subscription management widgets here later
+            // *** خط زیر اضافه شد ***
+            addWidget('manage_subscriptions', 'مدیریت اشتراک‌ها', 'fa-credit-card', '/subscriptions.html');
         }
 
-        widgets.forEach(widget => widgetsContainer.appendChild(widget));
+        widgets.forEach(widget => {
+            widgetsContainer.appendChild(widget);
+        });
     }
 
     async function checkAuthAndLoadDashboard() {
@@ -68,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         userNameDisplay.textContent = `خوش آمدید، ${profile.name || user.email}`;
         
-        // If user is an admin, fetch subscription info
+        // اگر کاربر مدیر مدرسه بود، اطلاعات اشتراک را نمایش بده
         if (profile.role === 'admin') {
             const { data: subscription, error: subError } = await supabase
                 .from('subscriptions')
