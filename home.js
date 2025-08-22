@@ -52,7 +52,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (role === 'admin') {
             addWidget('manage_users', 'مدیریت کاربران', 'fa-users-cog', '/users.html');
         }
-
+        if (role === 'super_admin') {
+            addWidget('manage_subscriptions', 'مدیریت اشتراک‌ها', 'fa-credit-card', '/subscriptions.html');
+            addWidget('manage_students_limit', 'مدیریت تعداد دانش‌آموزان', 'fa-users', '/student-limit.html');
+            addWidget('manage_users', 'مدیریت کاربران', 'fa-users-cog', '/users.html');
+        }
         widgets.forEach(widget => {
             widgetsContainer.appendChild(widget);
         });

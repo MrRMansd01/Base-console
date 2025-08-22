@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.href = '/login.html';
             return;
         }
-        currentUserId = user.id; // Store current user's ID
+        currentUserId = user.id;
 
         const { data: profile, error } = await supabase
             .from('profiles')
@@ -31,7 +31,8 @@ document.addEventListener('DOMContentLoaded', () => {
             .eq('id', user.id)
             .single();
 
-        if (error || profile.role !== 'admin') {
+        // تغییر: فقط super_admin به این صفحه دسترسی دارد
+        if (error || profile.role !== 'super_admin') {
             alert('شما دسترسی لازم برای مشاهده این صفحه را ندارید.');
             window.location.href = '/home.html';
         }
