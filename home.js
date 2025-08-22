@@ -23,34 +23,28 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!widgets.has(key)) widgets.set(key, createWidget(title, icon, link));
         };
 
-        // --- ویجت‌های مشترک برای همه ---
         addWidget('profile', 'پروفایل من', 'fa-user-circle', '/profile.html');
 
-        // --- ویجت‌های دانش‌آموز ---
         if (role === 'student') {
             addWidget('tasks', 'مدیریت وظایف', 'fa-tasks', '/index.html');
             addWidget('report_card', 'کارنامه من', 'fa-graduation-cap', '/report-card.html');
         }
         
-        // --- ویجت‌های معلم و مشاور ---
         if (['teacher', 'consultant'].includes(role)) {
             addWidget('tasks', 'مدیریت وظایف', 'fa-tasks', '/index.html');
             addWidget('class_report', 'گزارش کلاس', 'fa-chart-bar', '/reports.html');
             addWidget('enter_scores', 'ثبت نمرات', 'fa-edit', '/scores.html');
         }
 
-        // --- ویجت‌های مدیر و مشاور ---
         if (['admin', 'consultant'].includes(role)) {
             addWidget('manage_subjects', 'مدیریت درس‌ها', 'fa-book', '/subjects.html');
             addWidget('manage_exams', 'مدیریت آزمون‌ها', 'fa-file-signature', '/exams.html');
         }
         
-        // --- ویجت‌های اختصاصی مدیر مدرسه ---
         if (role === 'admin') {
             addWidget('manage_school_users', 'مدیریت کاربران مدرسه', 'fa-users', '/index.html');
         }
         
-        // --- ویجت‌های اختصاصی فقط برای ادمین کل ---
         if (role === 'super_admin') {
             addWidget('manage_schools', 'مدیریت مدارس', 'fa-school', '/schools.html');
             addWidget('manage_users', 'مدیریت کاربران', 'fa-users-cog', '/users.html');
@@ -63,15 +57,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function checkAuthAndLoadDashboard() {
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        if (authError || !user) {
+        // تغییر: استفاده از getSession برای اطمینان از بارگذاری اطلاعات ورود
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError || !session) {
             window.location.href = '/login.html';
             return;
         }
+        const user = session.user;
 
         const { data: profile, error: profileError } = await supabase
             .from('profiles')
-            .select('*') // Get all columns to check manager_id
+            .select('*')
             .eq('id', user.id)
             .single();
 
@@ -82,13 +78,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         userNameDisplay.textContent = `خوش آمدید، ${profile.name || user.email}`;
         
-        // --- Subscription Check Logic ---
         let subscriptionExpired = false;
         let managerIdToCheck = null;
 
         if (profile.role === 'admin') {
             managerIdToCheck = profile.id;
-        } else if (profile.manager_id) { // If user is a student/teacher managed by an admin
+        } else if (profile.manager_id) {
             managerIdToCheck = profile.manager_id;
         }
 
@@ -104,7 +99,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const today = new Date();
                 endDate.setHours(23, 59, 59, 999);
                 today.setHours(0, 0, 0, 0);
-
                 const diffTime = endDate - today;
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 

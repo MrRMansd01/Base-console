@@ -1,9 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
     const supabaseUrl = 'https://lholzspyazziknxqopmi.supabase.co';
-    const supabaseKey = 'eyJhbGciOiJIUzI-NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxob2x6c3B5YXp6aWtueHFvcG1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIwMjc0MTAsImV4cCI6MjA1NzYwMzQxMH0.uku06OF-WapBhuV-A_rJBXu3x24CKKkSTM0SnmPIOOE';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxob2x6c3B5YXp6aWtueHFvcG1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIwMjc0MTAsImV4cCI6MjA1NzYwMzQxMH0.uku06OF-WapBhuV-A_rJBXu3x24CKKkSTM0SnmPIOOE';
     const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-    // DOM Elements
     const adminSelect = document.getElementById('admin-select');
     const subscriptionDetails = document.getElementById('subscription-details');
     const currentExpiryEl = document.getElementById('current-expiry');
@@ -11,7 +10,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const subscriptionForm = document.getElementById('subscription-form');
     const loadingMessage = document.getElementById('loading-message');
 
-    // Initialize date picker
     const datePicker = flatpickr(expiryDateInput, {
         locale: "fa",
         dateFormat: "Y-m-d",
@@ -19,13 +17,14 @@ document.addEventListener('DOMContentLoaded', () => {
         altFormat: "l، j F Y",
     });
 
-    // Check if the logged-in user is a super_admin
     async function checkSuperAdminRole() {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
+        // تغییر: استفاده از getSession برای اطمینان از بارگذاری اطلاعات ورود
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError || !session) {
             window.location.href = '/login.html';
-            return;
+            return false;
         }
+        const user = session.user;
 
         const { data: profile, error } = await supabase
             .from('profiles')
@@ -33,13 +32,14 @@ document.addEventListener('DOMContentLoaded', () => {
             .eq('id', user.id)
             .single();
 
-        if (error || profile.role !== 'super_admin') {
+        if (error || !profile || profile.role !== 'super_admin') {
             alert('شما دسترسی لازم برای مشاهده این صفحه را ندارید.');
             window.location.href = '/home.html';
+            return false;
         }
+        return true;
     }
 
-    // Fetch admin users to populate the dropdown
     async function populateAdminsDropdown() {
         const { data: admins, error } = await supabase
             .from('profiles')
@@ -54,7 +54,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Fetch subscription details when an admin is selected
     adminSelect.addEventListener('change', async () => {
         const adminId = adminSelect.value;
         if (!adminId) {
@@ -72,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .eq('user_id', adminId)
             .single();
 
-        if (error && error.code !== 'PGRST116') { // Ignore 'no rows found' error
+        if (error && error.code !== 'PGRST116') {
             console.error('Error fetching subscription:', error);
             currentExpiryEl.textContent = 'خطا در دریافت اطلاعات';
         } else if (subscription) {
@@ -85,7 +84,6 @@ document.addEventListener('DOMContentLoaded', () => {
         subscriptionDetails.style.display = 'block';
     });
 
-    // Handle form submission to save the new expiry date
     subscriptionForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const adminId = adminSelect.value;
@@ -96,15 +94,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // *** کد اصلاح شده در اینجا قرار دارد ***
-        // Upsert handles both inserting a new subscription and updating an existing one
         const { error } = await supabase.from('subscriptions').upsert({
             user_id: adminId,
             end_date: newEndDate,
-            // You can add other fields like start_date here if needed
-            // start_date: new Date().toISOString() 
         }, {
-            onConflict: 'user_id' // This now works because of the UNIQUE constraint
+            onConflict: 'user_id'
         });
 
         if (error) {
@@ -112,13 +106,13 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('خطا در ذخیره اطلاعات اشتراک.');
         } else {
             alert('اطلاعات اشتراک با موفقیت به‌روزرسانی شد.');
-            // Refresh the displayed expiry date
             currentExpiryEl.textContent = new Date(newEndDate).toLocaleDateString('fa-IR');
         }
     });
 
-    // Initial Load
-    checkSuperAdminRole().then(() => {
-        populateAdminsDropdown();
+    checkSuperAdminRole().then((hasAccess) => {
+        if (hasAccess) {
+            populateAdminsDropdown();
+        }
     });
 });
