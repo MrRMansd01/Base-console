@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     const supabaseUrl = 'https://lholzspyazziknxqopmi.supabase.co';
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxob2x6c3B5YXp6aWtueHFvcG1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIwMjc0MTAsImV4cCI6MjA1NzYwMzQxMH0.uku06OF-WapBhuV-A_rJBXu3x24CKKkSTM0SnmPIOOE';
+    const supabaseKey = 'eyJhbGciOiJIUzI-NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxob2x6c3B5YXp6aWtueHFvcG1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIwMjc0MTAsImV4cCI6MjA1NzYwMzQxMH0.uku06OF-WapBhuV-A_rJBXu3x24CKKkSTM0SnmPIOOE';
     const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
     // DOM Elements
@@ -96,12 +96,15 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // *** کد اصلاح شده در اینجا قرار دارد ***
         // Upsert handles both inserting a new subscription and updating an existing one
         const { error } = await supabase.from('subscriptions').upsert({
             user_id: adminId,
-            end_date: newEndDate
+            end_date: newEndDate,
+            // You can add other fields like start_date here if needed
+            // start_date: new Date().toISOString() 
         }, {
-            onConflict: 'user_id'
+            onConflict: 'user_id' // This now works because of the UNIQUE constraint
         });
 
         if (error) {

@@ -13,9 +13,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const userRoleSelect = document.getElementById('user-role');
     const usersTableBody = document.querySelector('#users-table tbody');
     const loadingMessage = document.getElementById('loading-message');
+    
+    // Admin specific fields
     const adminFields = document.getElementById('admin-fields');
     const schoolNameInput = document.getElementById('school-name');
     const studentLimitInput = document.getElementById('student-limit');
+
+    // Manager selection fields
+    const managerFields = document.getElementById('manager-fields');
+    const managerSelect = document.getElementById('manager-select');
 
     let currentUserId = null;
 
@@ -39,6 +45,25 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.href = '/home.html';
         }
     }
+    
+    // --- اضافه شده: این تابع لیست مدیران را برای انتخاب می‌آورد ---
+    async function populateManagersDropdown() {
+        const { data: admins, error } = await supabase
+            .from('profiles')
+            .select('id, name, school_name')
+            .eq('role', 'admin');
+        
+        if (error) {
+            console.error('Error fetching admins:', error);
+            return;
+        }
+        
+        managerSelect.innerHTML = '<option value="">بدون مدیر (مستقل)</option>'; // Reset
+        admins.forEach(admin => {
+            const option = new Option(`${admin.name} (${admin.school_name || 'بدون مدرسه'})`, admin.id);
+            managerSelect.appendChild(option);
+        });
+    }
 
     // Fetch and display all users
     async function fetchUsers() {
@@ -47,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const { data: users, error } = await supabase
             .from('profiles')
-            .select('*')
+            .select('*, manager:manager_id(school_name)') // Fetch school name from manager
             .order('created_at', { ascending: false });
 
         if (error) {
@@ -61,12 +86,13 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             loadingMessage.style.display = 'none';
             users.forEach(user => {
+                const school = user.role === 'admin' ? user.school_name : (user.manager ? user.manager.school_name : '-');
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${user.name || 'نامشخص'}</td>
                     <td>${user.email}</td>
                     <td>${user.role || 'تعیین نشده'}</td>
-                    <td>${user.school_name || '-'}</td>
+                    <td>${school || '-'}</td>
                     <td class="actions-cell">
                         <button class="btn-icon btn-edit" data-user='${JSON.stringify(user)}' title="ویرایش"><i class="fas fa-edit"></i></button>
                         <button class="btn-icon btn-delete" data-id="${user.id}" title="حذف"><i class="fas fa-trash"></i></button>
@@ -84,13 +110,14 @@ document.addEventListener('DOMContentLoaded', () => {
         userEmailInput.value = user.email;
         userRoleSelect.value = user.role || 'student';
         
-        // Show/hide admin-specific fields based on role
+        // Show/hide fields based on the selected role
+        toggleModalFields(user.role);
+        
         if (user.role === 'admin') {
-            adminFields.style.display = 'block';
             schoolNameInput.value = user.school_name || '';
             studentLimitInput.value = user.student_limit || '';
-        } else {
-            adminFields.style.display = 'none';
+        } else if (['student', 'teacher', 'consultant'].includes(user.role)) {
+            managerSelect.value = user.manager_id || '';
         }
 
         modal.classList.add('is-open');
@@ -100,6 +127,21 @@ document.addEventListener('DOMContentLoaded', () => {
     function hideModal() {
         modal.classList.remove('is-open');
     }
+
+    // --- اضافه شده: این تابع فیلدهای مودال را بر اساس نقش نمایش می‌دهد ---
+    function toggleModalFields(role) {
+        if (role === 'admin') {
+            adminFields.style.display = 'block';
+            managerFields.style.display = 'none';
+        } else if (['student', 'teacher', 'consultant'].includes(role)) {
+            adminFields.style.display = 'none';
+            managerFields.style.display = 'block';
+        } else { // for super_admin
+            adminFields.style.display = 'none';
+            managerFields.style.display = 'none';
+        }
+    }
+
 
     // Handle form submission for updating a user
     userForm.addEventListener('submit', async (e) => {
@@ -118,10 +160,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (role === 'admin') {
             updates.school_name = schoolNameInput.value.trim();
             updates.student_limit = parseInt(studentLimitInput.value, 10) || null;
-        } else {
+            updates.manager_id = null; // An admin cannot have a manager
+        } else if (['student', 'teacher', 'consultant'].includes(role)) {
+            updates.manager_id = managerSelect.value || null;
+            updates.school_name = null;
+            updates.student_limit = null;
+        } else { // for super_admin
+            updates.manager_id = null;
             updates.school_name = null;
             updates.student_limit = null;
         }
+
 
         const { error } = await supabase
             .from('profiles')
@@ -137,13 +186,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // Toggle admin fields visibility when role changes in the modal
+    // Toggle modal fields visibility when role changes
     userRoleSelect.addEventListener('change', (e) => {
-        if (e.target.value === 'admin') {
-            adminFields.style.display = 'block';
-        } else {
-            adminFields.style.display = 'none';
-        }
+        toggleModalFields(e.target.value);
     });
 
     // Handle clicks on edit and delete buttons
@@ -164,8 +209,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (confirm('آیا از حذف این کاربر مطمئن هستید؟ این عمل غیرقابل بازگشت است.')) {
-                // To properly delete a user, you should call a server-side function.
-                // For now, this just deletes the profile.
                 const { error } = await supabase
                     .from('profiles')
                     .delete()
@@ -190,6 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initial Load
     checkSuperAdminRole().then(() => {
+        populateManagersDropdown();
         fetchUsers();
     });
 });
