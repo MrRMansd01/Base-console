@@ -31,20 +31,20 @@ document.addEventListener('DOMContentLoaded', () => {
         if (role === 'student') {
             addWidget('report_card', 'کارنامه من', 'fa-graduation-cap', '/report-card.html');
         }
-        // --- ویجت‌های معلم و مشاور ---
-        if (['teacher', 'consultant'].includes(role)) {
+        // --- ویجت‌های مدیر، معلم و مشاور ---
+        if (['admin', 'teacher', 'consultant'].includes(role)) {
             addWidget('class_report', 'گزارش کلاس', 'fa-chart-bar', '/reports.html');
             addWidget('enter_scores', 'ثبت نمرات', 'fa-edit', '/scores.html');
         }
-        // --- ویجت‌های مشاور ---
-        if (role === 'consultant') {
+        // --- ویجت‌های مدیر و مشاور ---
+        if (['admin', 'consultant'].includes(role)) {
             addWidget('manage_subjects', 'مدیریت درس‌ها', 'fa-book', '/subjects.html');
             addWidget('manage_exams', 'مدیریت آزمون‌ها', 'fa-file-signature', '/exams.html');
         }
         
         // --- ویجت‌های اختصاصی فقط برای ادمین کل ---
         if (role === 'super_admin') {
-            addWidget('manage_users', 'مدیریت کاربران', 'fa-users-cog', '/users.html');
+            addWidget('manage_users', 'مدیریت مدارس و کاربران', 'fa-school', '/users.html');
             addWidget('manage_subscriptions', 'مدیریت اشتراک‌ها', 'fa-credit-card', '/subscriptions.html');
         }
 
@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const { data: profile, error: profileError } = await supabase
             .from('profiles')
-            .select('name, role')
+            .select('*') // Get all columns to check manager_id
             .eq('id', user.id)
             .single();
 
@@ -73,31 +73,74 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         userNameDisplay.textContent = `خوش آمدید، ${profile.name || user.email}`;
         
-        // اگر کاربر مدیر مدرسه بود، اطلاعات اشتراک را نمایش بده
+        // --- Subscription Check Logic ---
+        let subscriptionExpired = false;
+        let managerIdToCheck = null;
+
         if (profile.role === 'admin') {
-            const { data: subscription, error: subError } = await supabase
+            managerIdToCheck = profile.id;
+        } else if (profile.manager_id) { // If user is a student/teacher managed by an admin
+            managerIdToCheck = profile.manager_id;
+        }
+
+        // Only check subscription if the user is an admin or is managed by one
+        if (managerIdToCheck) {
+            const { data: subscription } = await supabase
                 .from('subscriptions')
                 .select('end_date')
-                .eq('user_id', user.id)
+                .eq('user_id', managerIdToCheck)
                 .single();
-            
+
             if (subscription && subscription.end_date) {
                 const endDate = new Date(subscription.end_date);
                 const today = new Date();
+                // Set hours to 0 to compare dates only
+                endDate.setHours(23, 59, 59, 999);
+                today.setHours(0, 0, 0, 0);
+
                 const diffTime = endDate - today;
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-                if (diffDays > 0) {
-                    subscriptionDisplay.textContent = `${diffDays} روز از اشتراک شما باقی مانده است`;
-                } else {
-                    subscriptionDisplay.textContent = 'اشتراک شما منقضی شده است';
-                    subscriptionDisplay.style.backgroundColor = '#ffcdd2';
-                    subscriptionDisplay.style.color = '#c62828';
+                if (diffDays < 1) {
+                    subscriptionExpired = true;
                 }
-                subscriptionDisplay.style.display = 'inline-block';
+
+                // Display remaining days for the admin themselves
+                if (profile.role === 'admin') {
+                    if (!subscriptionExpired) {
+                        subscriptionDisplay.textContent = `${diffDays} روز از اشتراک شما باقی مانده است`;
+                    } else {
+                        subscriptionDisplay.textContent = 'اشتراک شما منقضی شده است';
+                        subscriptionDisplay.style.backgroundColor = '#ffcdd2';
+                        subscriptionDisplay.style.color = '#c62828';
+                    }
+                    subscriptionDisplay.style.display = 'inline-block';
+                }
+            } else {
+                // No subscription record found for the admin, so it's considered expired/inactive
+                subscriptionExpired = true;
+                if (profile.role === 'admin') {
+                   subscriptionDisplay.textContent = 'اشتراک فعال نشده است';
+                   subscriptionDisplay.style.display = 'inline-block';
+                }
             }
         }
 
+        // --- Block UI if subscription is expired ---
+        if (subscriptionExpired) {
+            widgetsContainer.innerHTML = `
+                <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; background: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #f44336; margin-bottom: 1rem;"></i>
+                    <h2 style="color: #d32f2f;">دسترسی غیرفعال است</h2>
+                    <p style="color: #333;">اشتراک مدرسه شما منقضی شده یا فعال نشده است. لطفا با پشتیبانی تماس بگیرید.</p>
+                </div>
+            `;
+            // Disable logout button as well if needed, or keep it to allow logging out
+            // logoutBtn.disabled = true; 
+            return; // Stop further execution
+        }
+
+        // If everything is OK, render the dashboard based on the user's own role
         renderDashboard(profile.role);
     }
 
