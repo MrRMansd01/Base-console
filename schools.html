@@ -8,6 +8,10 @@
     <link rel="stylesheet" href="subjects.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .add-user-section { border: 1px solid #e0e0e0; padding: 1rem; border-radius: 8px; background-color: #f9f9f9; }
+        .table-wrapper { max-height: 250px; overflow-y: auto; }
+    </style>
 </head>
 <body>
     <div class="page-container">
@@ -101,6 +105,61 @@
                     <button type="button" id="cancel-add-btn" class="btn btn-secondary">انصراف</button>
                 </div>
             </form>
+        </div>
+    </div>
+    
+    <!-- Modal for Managing School Users -->
+    <div id="manage-users-modal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <h2>مدیریت کاربران مدرسه: <span id="modal-school-name"></span></h2>
+            <input type="hidden" id="modal-admin-id">
+
+            <div class="add-user-section">
+                <h3>افزودن کاربران آزاد به مدرسه</h3>
+                <div class="table-wrapper">
+                    <table id="unassigned-users-table">
+                        <thead>
+                            <tr>
+                                <th>انتخاب</th>
+                                <th>نام</th>
+                                <th>ایمیل</th>
+                                <th>نقش</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Unassigned users will be populated here -->
+                        </tbody>
+                    </table>
+                    <p id="unassigned-users-loading">در حال بارگذاری...</p>
+                </div>
+                <div class="modal-actions" style="justify-content: flex-start; margin-top: 1rem;">
+                    <button id="add-selected-users-btn" class="btn btn-primary">افزودن کاربران انتخاب شده</button>
+                </div>
+            </div>
+
+            <hr style="margin: 1.5rem 0;">
+
+            <h3>کاربران فعلی مدرسه</h3>
+            <div class="table-wrapper">
+                <table id="school-users-table">
+                    <thead>
+                        <tr>
+                            <th>نام</th>
+                            <th>ایمیل</th>
+                            <th>نقش</th>
+                            <th>عملیات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- User list will be populated here -->
+                    </tbody>
+                </table>
+                 <p id="school-users-loading">در حال بارگذاری...</p>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" id="close-manage-users-btn" class="btn btn-secondary">بستن</button>
+            </div>
         </div>
     </div>
 
