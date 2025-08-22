@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let selectedUserId = null;
     let selectedDateObject = new Date();
     let isAdmin = false;
-    let currentUserRole = null;
+    let currentUserRole = null; // Will be set on init
     const ADMIN_ID = '23df94b7-412f-4321-a001-591c07fe622e';
     // Supabase is now expected to be globally available from the inline script in index.html
     let selectedScore = 1;
@@ -138,37 +138,7 @@ document.addEventListener('DOMContentLoaded', function() {
             reportText += `در انتظار: ${pendingTasks}\n`;
 
             reportContent.textContent = reportText;
-
-            // This section for AI summary is commented out as it requires a valid API key.
-            // You can re-enable it by providing your Gemini API key.
-            
-            const prompt = `لطفا گزارش عملکرد زیر را که برای یک دانش‌آموز است، به زبان فارسی خلاصه کن. در خلاصه‌ی خود به نقاط قوت، ضعف‌های احتمالی و یک توصیه‌ی کلی اشاره کن:\n\n${reportText}`;
-            
-            let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
-            const payload = { contents: chatHistory };
-            const apiKey = "AIzaSyBMVIfay_dqBXzH_sWJb2f53jS__XOyQRg"; // <-- IMPORTANT: Add your API key here
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
-
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (!response.ok) {
-                throw new Error(`API call failed with status: ${response.status}`);
-            }
-
-            const result = await response.json();
-            
-            if (result.candidates && result.candidates.length > 0 && result.candidates[0].content.parts[0].text) {
-                const summary = result.candidates[0].content.parts[0].text;
-                aiSummaryContent.textContent = summary;
-            } else {
-                 aiSummaryContent.innerHTML = '<p class="placeholder" style="color: var(--danger-color);">پاسخی از سرویس هوش مصنوعی دریافت نشد.</p>';
-            }
-            
-           aiSummaryContent.innerHTML = '<p class="placeholder">خلاصه هوشمند غیرفعال است. برای فعال‌سازی کلید API را در کد قرار دهید.</p>';
+            aiSummaryContent.innerHTML = '<p class="placeholder">خلاصه هوشمند غیرفعال است. برای فعال‌سازی کلید API را در کد قرار دهید.</p>';
 
         } catch (error) {
             console.error('Error generating report:', error);
@@ -424,7 +394,19 @@ document.addEventListener('DOMContentLoaded', function() {
     async function loadUsers(currentUser, isAdminFlag) {
         if (!usersContainer || !supabase) return;
         try {
-            const { data: users, error: usersError } = await supabase.from('profiles').select('*').order('created_at', { ascending: true });
+            let usersQuery = supabase.from('profiles').select('*');
+
+            // If the current user is an admin (not super_admin), only load users they manage
+            if (currentUserRole === 'admin') {
+                usersQuery = usersQuery.eq('manager_id', currentUser.id);
+            } else if (currentUserRole === 'student' || currentUserRole === 'teacher' || currentUserRole === 'consultant') {
+                // Non-admins only see themselves
+                usersQuery = usersQuery.eq('id', currentUser.id);
+            }
+            // super_admin sees everyone
+
+            const { data: users, error: usersError } = await usersQuery.order('created_at', { ascending: true });
+            
             if (usersError) throw usersError;
 
             const { data: allTasks, error: tasksError } = await supabase.from('tasks').select('user_id');
@@ -439,10 +421,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             users.forEach(user => userTaskMap.set(user.id, { ...user, taskCount: taskCounts[user.id] || 0 }));
 
-            const usersToDisplay = isAdminFlag ? users : users.filter(u => u.id === currentUser.id);
-
             usersContainer.innerHTML = '';
-            usersToDisplay.forEach(userProfile => {
+            users.forEach(userProfile => {
                 const userElement = document.createElement('li');
                 userElement.className = 'user-item';
                 userElement.dataset.userId = userProfile.id;
@@ -455,13 +435,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 userElement.innerHTML = `
                     <span class="user-name">${userProfile.name || userProfile.username || userProfile.email}</span>
                     <span class="task-count">${taskCount} تسک</span>
+                    ${isAdmin ? `
                     <div class="user-actions">
                         <button class="user-action-btn dots-btn" title="گزینه‌ها"><i class="fas fa-ellipsis-v"></i></button>
                         <div class="user-actions-menu">
                             <button class="menu-item edit-user-btn">ویرایش</button>
                             <button class="menu-item delete-user-btn">حذف</button>
                         </div>
-                    </div>
+                    </div>` : ''}
                 `;
 
                 userElement.addEventListener('click', (e) => {
@@ -470,27 +451,29 @@ document.addEventListener('DOMContentLoaded', function() {
                     selectedUserId = userProfile.id;
                     const selectedUserRole = userTaskMap.get(userProfile.id)?.role;
                     if (viewProfileBtn) {
-                        viewProfileBtn.style.display = (currentUserRole !== 'student' && selectedUserRole === 'student') ? 'inline-block' : 'none';
+                        viewProfileBtn.style.display = (isAdmin && selectedUserRole === 'student') ? 'inline-block' : 'none';
                     }
                     loadTasksForUser(userProfile.id, userProfile.name, isAdminFlag, currentFilter);
                 });
 
-                userElement.querySelector('.dots-btn').addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const menu = userElement.querySelector('.user-actions-menu');
-                    document.querySelectorAll('.user-actions-menu.visible').forEach(m => {
-                        if (m !== menu) m.classList.remove('visible');
+                if (isAdmin) {
+                    userElement.querySelector('.dots-btn').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const menu = userElement.querySelector('.user-actions-menu');
+                        document.querySelectorAll('.user-actions-menu.visible').forEach(m => {
+                            if (m !== menu) m.classList.remove('visible');
+                        });
+                        menu.classList.toggle('visible');
                     });
-                    menu.classList.toggle('visible');
-                });
-                userElement.querySelector('.edit-user-btn').addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    openEditUserModal(userProfile.id);
-                });
-                userElement.querySelector('.delete-user-btn').addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    deleteUserProfile(userProfile.id, userProfile.name);
-                });
+                    userElement.querySelector('.edit-user-btn').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        openEditUserModal(userProfile.id);
+                    });
+                    userElement.querySelector('.delete-user-btn').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        deleteUserProfile(userProfile.id, userProfile.name);
+                    });
+                }
 
                 usersContainer.appendChild(userElement);
             });
@@ -576,8 +559,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const editUserRoleSelect = document.getElementById('edit-user-role');
         const editUserIdInput = document.getElementById('edit-user-id');
         const editUserNameInput = document.getElementById('edit-user-name');
+        const editManagerSelectGroup = document.getElementById('edit-user-manager-group');
+        const editManagerSelect = document.getElementById('edit-user-manager');
 
-        if (isAdmin && editUserRoleGroup) {
+        // Only super_admin can change roles
+        if (currentUserRole === 'super_admin' && editUserRoleGroup) {
             editUserRoleGroup.style.display = 'block';
         } else if (editUserRoleGroup) {
             editUserRoleGroup.style.display = 'none';
@@ -587,7 +573,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if(userData && editUserIdInput && editUserNameInput) {
             editUserIdInput.value = userId;
             editUserNameInput.value = userData.name || '';
-            if (isAdmin && editUserRoleSelect) {
+            if (currentUserRole === 'super_admin' && editUserRoleSelect) {
                 editUserRoleSelect.value = userData.role || 'student';
             }
             if (editUserModal) editUserModal.classList.add('is-open');
@@ -618,7 +604,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         } catch (error) {
             console.error('Error deleting user:', error);
-            alert('خطا در حذف کاربر. (ممکن است تابع delete_user_and_data در پایگاه داده وجود نداشته باشد)');
+            alert('خطا در حذف کاربر.');
         }
     }
     async function openStudentDetailsModal() {
@@ -646,7 +632,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (detailsUserIdInput) detailsUserIdInput.value = profile.id;
 
-        const isEditable = currentUserRole === 'admin';
+        const isEditable = ['admin', 'super_admin'].includes(currentUserRole);
         if (saveStudentDetailsBtn) saveStudentDetailsBtn.style.display = isEditable ? 'inline-block' : 'none';
         if (studentDetailsModal) {
             studentDetailsModal.querySelectorAll('input, textarea').forEach(input => input.readOnly = !isEditable);
@@ -691,7 +677,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (!userId || !newName) return alert('لطفا نام کاربر را وارد کنید.');
         const updates = { name: newName.trim() };
-        if (isAdmin && newUserRole) updates.role = newUserRole;
+        if (currentUserRole === 'super_admin' && newUserRole) {
+            updates.role = newUserRole;
+        }
         const { error } = await supabase.from('profiles').update(updates).eq('id', userId);
         if (error) {
             alert('خطا در بروزرسانی کاربر.');
@@ -704,7 +692,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- App Initialization ---
     async function initializeApp() {
-        // The global 'supabase' object is already initialized by the inline script in index.html
         if (typeof supabase === 'undefined' || !supabase) {
              console.error('Supabase client is not available. Please ensure it is loaded and initialized before app.js');
              document.body.innerHTML = `<div style="text-align:center; padding: 2rem;"><h2>خطای حیاتی: Supabase یافت نشد.</h2></div>`;
@@ -723,12 +710,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
             if (userNameElement) userNameElement.textContent = profile?.name || user.email;
-            isAdmin = profile?.role === 'admin'; // Correctly check the role from the profile
+            
             currentUserRole = profile?.role || 'student';
+            isAdmin = ['admin', 'super_admin'].includes(currentUserRole);
 
             await loadUsers(user, isAdmin);
 
-            // Initialize Flatpickr only if the wrapper exists
             const flatpickrWrapper = document.querySelector('.flatpickr-wrapper');
             if (flatpickrWrapper && typeof flatpickr !== 'undefined') {
                 flatpickrInstance = flatpickr(flatpickrWrapper, {
@@ -757,7 +744,6 @@ document.addEventListener('DOMContentLoaded', function() {
             closeReportModalBtn?.addEventListener('click', closeReportModal);
             reportForm?.addEventListener('submit', handleReportGeneration);
 
-            // Window click events
             window.addEventListener('click', (e) => {
                 if (e.target == feedbackModal) hideFeedbackSubmissionModal();
                 if (e.target == viewFeedbackModal) closeViewFeedbackModal();
@@ -770,7 +756,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
 
-            // Keyboard events
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') {
                     hideFeedbackSubmissionModal();
@@ -782,7 +767,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
 
-            // Category buttons
             categoryButtons.forEach(btn => {
                 btn.addEventListener('click', () => {
                     categoryButtons.forEach(b => b.classList.remove('active'));
@@ -791,7 +775,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             });
 
-            // Filter buttons
             document.querySelectorAll('.filter-btn').forEach(button => {
                 button.addEventListener('click', async () => {
                     document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
@@ -801,7 +784,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             });
 
-            // Submit task button
             submitTaskBtn?.addEventListener('click', async () => {
                  const taskTitle = taskTitleInput?.value.trim();
                  if (!taskTitle) return alert('لطفا عنوان تسک را وارد کنید');
@@ -833,7 +815,6 @@ document.addEventListener('DOMContentLoaded', function() {
                  }
             });
 
-            // Other event listeners
             userSearchInput?.addEventListener('input', (e) => searchUsers(e.target.value));
             clearCompletedBtn?.addEventListener('click', clearCompletedTasks);
             viewProfileBtn?.addEventListener('click', openStudentDetailsModal);

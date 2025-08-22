@@ -13,11 +13,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const userRoleSelect = document.getElementById('user-role');
     const usersTableBody = document.querySelector('#users-table tbody');
     const loadingMessage = document.getElementById('loading-message');
+    const adminFields = document.getElementById('admin-fields');
+    const schoolNameInput = document.getElementById('school-name');
+    const studentLimitInput = document.getElementById('student-limit');
 
     let currentUserId = null;
 
-    // Check if the logged-in user is an admin
-    async function checkAdminRole() {
+    // Check if the logged-in user is a super_admin
+    async function checkSuperAdminRole() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
             window.location.href = '/login.html';
@@ -31,7 +34,6 @@ document.addEventListener('DOMContentLoaded', () => {
             .eq('id', user.id)
             .single();
 
-        // تغییر: فقط super_admin به این صفحه دسترسی دارد
         if (error || profile.role !== 'super_admin') {
             alert('شما دسترسی لازم برای مشاهده این صفحه را ندارید.');
             window.location.href = '/home.html';
@@ -62,9 +64,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${user.name || 'نامشخص'}</td>
-                    <td>${user.username || 'نامشخص'}</td>
                     <td>${user.email}</td>
                     <td>${user.role || 'تعیین نشده'}</td>
+                    <td>${user.school_name || '-'}</td>
                     <td class="actions-cell">
                         <button class="btn-icon btn-edit" data-user='${JSON.stringify(user)}' title="ویرایش"><i class="fas fa-edit"></i></button>
                         <button class="btn-icon btn-delete" data-id="${user.id}" title="حذف"><i class="fas fa-trash"></i></button>
@@ -80,7 +82,17 @@ document.addEventListener('DOMContentLoaded', () => {
         userIdInput.value = user.id;
         userNameInput.value = user.name;
         userEmailInput.value = user.email;
-        userRoleSelect.value = user.role || 'student'; // Default to student if no role
+        userRoleSelect.value = user.role || 'student';
+        
+        // Show/hide admin-specific fields based on role
+        if (user.role === 'admin') {
+            adminFields.style.display = 'block';
+            schoolNameInput.value = user.school_name || '';
+            studentLimitInput.value = user.student_limit || '';
+        } else {
+            adminFields.style.display = 'none';
+        }
+
         modal.classList.add('is-open');
     }
 
@@ -95,15 +107,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const id = userIdInput.value;
         const name = userNameInput.value.trim();
         const role = userRoleSelect.value;
-
+        
         if (!id || !name) {
             alert('لطفاً نام کاربر را وارد کنید.');
             return;
         }
 
+        const updates = { name, role };
+
+        if (role === 'admin') {
+            updates.school_name = schoolNameInput.value.trim();
+            updates.student_limit = parseInt(studentLimitInput.value, 10) || null;
+        } else {
+            updates.school_name = null;
+            updates.student_limit = null;
+        }
+
         const { error } = await supabase
             .from('profiles')
-            .update({ name, role })
+            .update(updates)
             .eq('id', id);
 
         if (error) {
@@ -111,20 +133,28 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('خطا در به‌روزرسانی کاربر.');
         } else {
             hideModal();
-            fetchUsers(); // Refresh the user list
+            fetchUsers();
+        }
+    });
+    
+    // Toggle admin fields visibility when role changes in the modal
+    userRoleSelect.addEventListener('change', (e) => {
+        if (e.target.value === 'admin') {
+            adminFields.style.display = 'block';
+        } else {
+            adminFields.style.display = 'none';
         }
     });
 
     // Handle clicks on edit and delete buttons
     usersTableBody.addEventListener('click', async (e) => {
         const editButton = e.target.closest('.btn-edit');
-        const deleteButton = e.target.closest('.btn-delete');
-
         if (editButton) {
             const user = JSON.parse(editButton.dataset.user);
             showModal(user);
         }
 
+        const deleteButton = e.target.closest('.btn-delete');
         if (deleteButton) {
             const id = deleteButton.dataset.id;
             
@@ -134,7 +164,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (confirm('آیا از حذف این کاربر مطمئن هستید؟ این عمل غیرقابل بازگشت است.')) {
-                // This only deletes the profile, not the auth user, for security reasons.
+                // To properly delete a user, you should call a server-side function.
+                // For now, this just deletes the profile.
                 const { error } = await supabase
                     .from('profiles')
                     .delete()
@@ -154,13 +185,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Event Listeners for modal
     cancelBtn.addEventListener('click', hideModal);
     modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            hideModal();
-        }
+        if (e.target === modal) hideModal();
     });
 
     // Initial Load
-    checkAdminRole().then(() => {
+    checkSuperAdminRole().then(() => {
         fetchUsers();
     });
 });

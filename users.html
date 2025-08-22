@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مدیریت کاربران</title>
     <link rel="icon" href="logo.svg" type="image/svg+xml">
-    <!-- We can reuse subjects.css for a consistent look -->
     <link rel="stylesheet" href="subjects.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -25,22 +24,20 @@
                     <thead>
                         <tr>
                             <th>نام</th>
-                            <th>نام کاربری</th>
                             <th>ایمیل</th>
                             <th>نقش</th>
+                            <th>مدرسه</th>
                             <th>عملیات</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <!-- User rows will be dynamically inserted here -->
-                    </tbody>
+                        </tbody>
                 </table>
                 <p id="loading-message">در حال بارگذاری کاربران...</p>
             </div>
         </main>
     </div>
 
-    <!-- Modal for editing users -->
     <div id="user-modal" class="modal">
         <div class="modal-content">
             <h2 id="modal-title">ویرایش کاربر</h2>
@@ -63,6 +60,16 @@
                         <option value="admin">مدیر</option>
                         <option value="super_admin">ادمین کل</option>
                     </select>
+                </div>
+                <div id="admin-fields" style="display: none;">
+                    <div class="form-group">
+                        <label for="school-name">نام مدرسه:</label>
+                        <input type="text" id="school-name" placeholder="نام مدرسه مدیر را وارد کنید">
+                    </div>
+                    <div class="form-group">
+                        <label for="student-limit">محدودیت دانش‌آموز:</label>
+                        <input type="number" id="student-limit" placeholder="تعداد مجاز دانش‌آموز">
+                    </div>
                 </div>
                 <div class="modal-actions">
                     <button type="submit" class="btn btn-primary">ذخیره تغییرات</button>

@@ -8,6 +8,16 @@
     <link rel="stylesheet" href="home.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .subscription-info {
+            font-size: 0.9rem;
+            background-color: #e0f2f1;
+            color: #00796b;
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+    </style>
 </head>
 <body>
     <div class="dashboard-container">
@@ -15,6 +25,7 @@
             <h1>داشبورد مدیریتی</h1>
             <div class="user-info">
                 <span id="user-name-display">در حال بارگذاری...</span>
+                <span id="subscription-display" class="subscription-info" style="display: none;"></span>
                 <button id="logout-btn" class="logout-btn">خروج</button>
             </div>
         </header>

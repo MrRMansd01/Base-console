@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const userNameDisplay = document.getElementById('user-name-display');
     const widgetsContainer = document.getElementById('dashboard-widgets-container');
     const logoutBtn = document.getElementById('logout-btn');
+    const subscriptionDisplay = document.getElementById('subscription-display');
 
     function createWidget(title, icon, link) {
         const widget = document.createElement('a');
@@ -15,53 +16,37 @@ document.addEventListener('DOMContentLoaded', () => {
         return widget;
     }
 
-
     function renderDashboard(role) {
         widgetsContainer.innerHTML = ''; 
-
         const widgets = new Map();
         const addWidget = (key, title, icon, link) => {
-            if (!widgets.has(key)) {
-                widgets.set(key, createWidget(title, icon, link));
-            }
+            if (!widgets.has(key)) widgets.set(key, createWidget(title, icon, link));
         };
 
-        // --- افزودن ویجت‌ها بر اساس سطح دسترسی ---
         addWidget('tasks', 'مدیریت وظایف', 'fa-tasks', '/index.html');
         addWidget('profile', 'پروفایل من', 'fa-user-circle', '/profile.html');
 
-        // ویجت‌های دانش‌آموز
         if (role === 'student') {
-            // This line is updated
             addWidget('report_card', 'کارنامه من', 'fa-graduation-cap', '/report-card.html');
         }
-
-        // ویجت‌های مشترک بین مدیر، معلم و مشاور
         if (['admin', 'teacher', 'consultant'].includes(role)) {
             addWidget('class_report', 'گزارش کلاس', 'fa-chart-bar', '/reports.html');
             addWidget('enter_scores', 'ثبت نمرات', 'fa-edit', '/scores.html');
         }
-        
-        // ویجت‌های مشترک بین مدیر و مشاور
         if (['admin', 'consultant'].includes(role)) {
             addWidget('manage_subjects', 'مدیریت درس‌ها', 'fa-book', '/subjects.html');
             addWidget('manage_exams', 'مدیریت آزمون‌ها', 'fa-file-signature', '/exams.html');
         }
-
-        // ویجت‌های اختصاصی مدیر
         if (role === 'admin') {
-            addWidget('manage_users', 'مدیریت کاربران', 'fa-users-cog', '/users.html');
+             // Admin doesn't manage users directly anymore in this model
         }
         if (role === 'super_admin') {
-            addWidget('manage_subscriptions', 'مدیریت اشتراک‌ها', 'fa-credit-card', '/subscriptions.html');
-            addWidget('manage_students_limit', 'مدیریت تعداد دانش‌آموزان', 'fa-users', '/student-limit.html');
             addWidget('manage_users', 'مدیریت کاربران', 'fa-users-cog', '/users.html');
+            // Add subscription management widgets here later
         }
-        widgets.forEach(widget => {
-            widgetsContainer.appendChild(widget);
-        });
-    }
 
+        widgets.forEach(widget => widgetsContainer.appendChild(widget));
+    }
 
     async function checkAuthAndLoadDashboard() {
         const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -69,17 +54,45 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.href = '/login.html';
             return;
         }
+
         const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('name, role')
             .eq('id', user.id)
             .single();
+
         if (profileError) {
             console.error('Error fetching profile:', profileError);
             userNameDisplay.textContent = 'خطا در بارگذاری پروفایل';
             return;
         }
         userNameDisplay.textContent = `خوش آمدید، ${profile.name || user.email}`;
+        
+        // If user is an admin, fetch subscription info
+        if (profile.role === 'admin') {
+            const { data: subscription, error: subError } = await supabase
+                .from('subscriptions')
+                .select('end_date')
+                .eq('user_id', user.id)
+                .single();
+            
+            if (subscription && subscription.end_date) {
+                const endDate = new Date(subscription.end_date);
+                const today = new Date();
+                const diffTime = endDate - today;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                if (diffDays > 0) {
+                    subscriptionDisplay.textContent = `${diffDays} روز از اشتراک شما باقی مانده است`;
+                } else {
+                    subscriptionDisplay.textContent = 'اشتراک شما منقضی شده است';
+                    subscriptionDisplay.style.backgroundColor = '#ffcdd2';
+                    subscriptionDisplay.style.color = '#c62828';
+                }
+                subscriptionDisplay.style.display = 'inline-block';
+            }
+        }
+
         renderDashboard(profile.role);
     }
 
