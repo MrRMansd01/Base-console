@@ -24,27 +24,36 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         // --- ویجت‌های مشترک برای همه ---
-        addWidget('tasks', 'مدیریت وظایف', 'fa-tasks', '/index.html');
         addWidget('profile', 'پروفایل من', 'fa-user-circle', '/profile.html');
 
         // --- ویجت‌های دانش‌آموز ---
         if (role === 'student') {
+            addWidget('tasks', 'مدیریت وظایف', 'fa-tasks', '/index.html');
             addWidget('report_card', 'کارنامه من', 'fa-graduation-cap', '/report-card.html');
         }
-        // --- ویجت‌های مدیر، معلم و مشاور ---
-        if (['admin', 'teacher', 'consultant'].includes(role)) {
+        
+        // --- ویجت‌های معلم و مشاور ---
+        if (['teacher', 'consultant'].includes(role)) {
+            addWidget('tasks', 'مدیریت وظایف', 'fa-tasks', '/index.html');
             addWidget('class_report', 'گزارش کلاس', 'fa-chart-bar', '/reports.html');
             addWidget('enter_scores', 'ثبت نمرات', 'fa-edit', '/scores.html');
         }
+
         // --- ویجت‌های مدیر و مشاور ---
         if (['admin', 'consultant'].includes(role)) {
             addWidget('manage_subjects', 'مدیریت درس‌ها', 'fa-book', '/subjects.html');
             addWidget('manage_exams', 'مدیریت آزمون‌ها', 'fa-file-signature', '/exams.html');
         }
         
+        // --- ویجت‌های اختصاصی مدیر مدرسه ---
+        if (role === 'admin') {
+            addWidget('manage_school_users', 'مدیریت کاربران مدرسه', 'fa-users', '/index.html');
+        }
+        
         // --- ویجت‌های اختصاصی فقط برای ادمین کل ---
         if (role === 'super_admin') {
-            addWidget('manage_users', 'مدیریت مدارس و کاربران', 'fa-school', '/users.html');
+            addWidget('manage_schools', 'مدیریت مدارس', 'fa-school', '/schools.html');
+            addWidget('manage_users', 'مدیریت کاربران', 'fa-users-cog', '/users.html');
             addWidget('manage_subscriptions', 'مدیریت اشتراک‌ها', 'fa-credit-card', '/subscriptions.html');
         }
 
@@ -83,7 +92,6 @@ document.addEventListener('DOMContentLoaded', () => {
             managerIdToCheck = profile.manager_id;
         }
 
-        // Only check subscription if the user is an admin or is managed by one
         if (managerIdToCheck) {
             const { data: subscription } = await supabase
                 .from('subscriptions')
@@ -94,7 +102,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (subscription && subscription.end_date) {
                 const endDate = new Date(subscription.end_date);
                 const today = new Date();
-                // Set hours to 0 to compare dates only
                 endDate.setHours(23, 59, 59, 999);
                 today.setHours(0, 0, 0, 0);
 
@@ -105,7 +112,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     subscriptionExpired = true;
                 }
 
-                // Display remaining days for the admin themselves
                 if (profile.role === 'admin') {
                     if (!subscriptionExpired) {
                         subscriptionDisplay.textContent = `${diffDays} روز از اشتراک شما باقی مانده است`;
@@ -117,7 +123,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     subscriptionDisplay.style.display = 'inline-block';
                 }
             } else {
-                // No subscription record found for the admin, so it's considered expired/inactive
                 subscriptionExpired = true;
                 if (profile.role === 'admin') {
                    subscriptionDisplay.textContent = 'اشتراک فعال نشده است';
@@ -126,7 +131,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // --- Block UI if subscription is expired ---
         if (subscriptionExpired) {
             widgetsContainer.innerHTML = `
                 <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; background: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
@@ -135,12 +139,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     <p style="color: #333;">اشتراک مدرسه شما منقضی شده یا فعال نشده است. لطفا با پشتیبانی تماس بگیرید.</p>
                 </div>
             `;
-            // Disable logout button as well if needed, or keep it to allow logging out
-            // logoutBtn.disabled = true; 
-            return; // Stop further execution
+            return; 
         }
 
-        // If everything is OK, render the dashboard based on the user's own role
         renderDashboard(profile.role);
     }
 

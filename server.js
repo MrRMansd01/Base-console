@@ -126,9 +126,10 @@ app.post('/register', async (req, res) => {
 // Main route
 app.get('/', (req, res) => {
     if (!req.session.user) {
-        return res.redirect('/login');
+        return res.redirect('/login.html');
     }
-    res.sendFile(path.join(__dirname, 'index.html'));
+    // تغییر در این خط: کاربر به جای index.html به home.html هدایت می‌شود
+    res.sendFile(path.join(__dirname, 'home.html'));
 });
 
 // API route to check authentication status
