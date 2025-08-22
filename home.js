@@ -31,21 +31,20 @@ document.addEventListener('DOMContentLoaded', () => {
         if (role === 'student') {
             addWidget('report_card', 'کارنامه من', 'fa-graduation-cap', '/report-card.html');
         }
-        // --- ویجت‌های مدیر، معلم و مشاور ---
-        if (['admin', 'teacher', 'consultant'].includes(role)) {
+        // --- ویجت‌های معلم و مشاور ---
+        if (['teacher', 'consultant'].includes(role)) {
             addWidget('class_report', 'گزارش کلاس', 'fa-chart-bar', '/reports.html');
             addWidget('enter_scores', 'ثبت نمرات', 'fa-edit', '/scores.html');
         }
-        // --- ویجت‌های مدیر و مشاور ---
-        if (['admin', 'consultant'].includes(role)) {
+        // --- ویجت‌های مشاور ---
+        if (role === 'consultant') {
             addWidget('manage_subjects', 'مدیریت درس‌ها', 'fa-book', '/subjects.html');
             addWidget('manage_exams', 'مدیریت آزمون‌ها', 'fa-file-signature', '/exams.html');
         }
         
-        // --- ویجت‌های اختصاصی ادمین کل ---
+        // --- ویجت‌های اختصاصی فقط برای ادمین کل ---
         if (role === 'super_admin') {
             addWidget('manage_users', 'مدیریت کاربران', 'fa-users-cog', '/users.html');
-            // *** خط زیر اضافه شد ***
             addWidget('manage_subscriptions', 'مدیریت اشتراک‌ها', 'fa-credit-card', '/subscriptions.html');
         }
 
