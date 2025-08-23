@@ -3,7 +3,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxob2x6c3B5YXp6aWtueHFvcG1pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIwMjc0MTAsImV4cCI6MjA1NzYwMzQxMH0.uku06OF-WapBhuV-A_rJBXu3x24CKKkSTM0SnmPIOOE';
     const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-    // DOM Elements for editing schools
     const modal = document.getElementById('school-modal');
     const cancelBtn = document.getElementById('cancel-btn');
     const schoolForm = document.getElementById('school-form');
@@ -14,13 +13,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const schoolsTableBody = document.querySelector('#schools-table tbody');
     const loadingMessage = document.getElementById('loading-message');
 
-    // DOM Elements for adding admins
     const addAdminBtn = document.getElementById('add-admin-btn');
     const addAdminModal = document.getElementById('add-admin-modal');
     const addAdminForm = document.getElementById('add-admin-form');
     const cancelAddBtn = document.getElementById('cancel-add-btn');
 
-    // DOM Elements for managing school users
     const manageUsersModal = document.getElementById('manage-users-modal');
     const modalSchoolName = document.getElementById('modal-school-name');
     const modalAdminId = document.getElementById('modal-admin-id');
@@ -31,21 +28,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const unassignedUsersLoading = document.getElementById('unassigned-users-loading');
     const addSelectedUsersBtn = document.getElementById('add-selected-users-btn');
 
-    // Check if the logged-in user is a super_admin
     async function checkSuperAdminRole() {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
+        // تغییر: استفاده از getSession برای اطمینان از بارگذاری اطلاعات ورود
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError || !session) {
             window.location.href = '/login.html';
-            return;
+            return false;
         }
+        const user = session.user;
+
         const { data: profile, error } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-        if (error || profile.role !== 'super_admin') {
+        if (error || !profile || profile.role !== 'super_admin') {
             alert('شما دسترسی لازم برای مشاهده این صفحه را ندارید.');
             window.location.href = '/home.html';
+            return false;
         }
+        return true;
     }
 
-    // Fetch and display all admins (schools)
     async function fetchAdmins() {
         loadingMessage.textContent = 'در حال بارگذاری لیست مدیران...';
         schoolsTableBody.innerHTML = '';
@@ -76,7 +76,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // --- School/Admin Management ---
     function showModal(admin) {
         adminIdInput.value = admin.id;
         adminNameDisplay.textContent = admin.name;
@@ -133,7 +132,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- School User Management ---
     async function openManageUsersModal(adminId, schoolName) {
         modalSchoolName.textContent = schoolName;
         modalAdminId.value = adminId;
@@ -224,7 +222,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- Event Listeners ---
     schoolsTableBody.addEventListener('click', (e) => {
         const editButton = e.target.closest('.btn-edit');
         if (editButton) {
@@ -246,8 +243,9 @@ document.addEventListener('DOMContentLoaded', () => {
     closeManageUsersBtn.addEventListener('click', () => { manageUsersModal.classList.remove('is-open'); });
     manageUsersModal.addEventListener('click', (e) => { if (e.target === manageUsersModal) manageUsersModal.classList.remove('is-open'); });
 
-    // Initial Load
-    checkSuperAdminRole().then(() => {
-        fetchAdmins();
+    checkSuperAdminRole().then((hasAccess) => {
+        if (hasAccess) {
+            fetchAdmins();
+        }
     });
 });

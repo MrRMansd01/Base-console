@@ -11,6 +11,7 @@
     <style>
         .add-user-section { border: 1px solid #e0e0e0; padding: 1rem; border-radius: 8px; background-color: #f9f9f9; }
         .table-wrapper { max-height: 250px; overflow-y: auto; }
+        textarea { width: 100%; padding: 0.5rem; font-family: 'Vazirmatn', sans-serif; border: 1px solid #ccc; border-radius: 6px; }
     </style>
 </head>
 <body>
@@ -156,8 +157,24 @@
                 </table>
                  <p id="school-users-loading">در حال بارگذاری...</p>
             </div>
+            
+            <hr style="margin: 1.5rem 0;">
 
-            <div class="modal-actions">
+            <h3>افزودن دسته‌جمعی دانش‌آموزان</h3>
+            <div class="add-user-section">
+                <form id="bulk-add-form">
+                    <div class="form-group">
+                        <label for="bulk-user-data">اطلاعات دانش‌آموزان را وارد کنید (هر دانش‌آموز در یک خط)</label>
+                        <textarea id="bulk-user-data" rows="5" placeholder="مثال:&#10;نام کامل,ایمیل,رمز عبور&#10;علی رضایی,ali@example.com,pass123&#10;مریم احمدی,maryam@example.com,pass456"></textarea>
+                        <small>فرمت هر خط: <strong>نام کامل,ایمیل,رمز عبور</strong></small>
+                    </div>
+                    <div class="modal-actions" style="justify-content: flex-start; margin-top: 1rem;">
+                        <button type="submit" class="btn btn-primary">افزودن دسته‌جمعی</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="modal-actions" style="margin-top: 2rem;">
                 <button type="button" id="close-manage-users-btn" class="btn btn-secondary">بستن</button>
             </div>
         </div>
