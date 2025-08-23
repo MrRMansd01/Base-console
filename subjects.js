@@ -14,35 +14,45 @@ document.addEventListener('DOMContentLoaded', () => {
     const subjectsTableBody = document.querySelector('#subjects-table tbody');
     const loadingMessage = document.getElementById('loading-message');
 
-    // Check user role
-    async function checkAdminRole() {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-            window.location.href = '/login.html';
-            return;
-        }
+    let currentUserProfile = null;
 
+    // Check user role (admin or consultant) and get their profile
+    async function checkAccessRole() {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError || !session) {
+            window.location.href = '/login.html';
+            return false;
+        }
+        
         const { data: profile, error } = await supabase
             .from('profiles')
-            .select('role')
-            .eq('id', user.id)
+            .select('id, role')
+            .eq('id', session.user.id)
             .single();
 
-        if (error || profile.role !== 'admin') {
+        if (error || !['admin', 'consultant', 'super_admin'].includes(profile.role)) {
             alert('شما دسترسی لازم برای مشاهده این صفحه را ندارید.');
             window.location.href = '/home.html';
+            return false;
         }
+        currentUserProfile = profile;
+        return true;
     }
 
-    // Fetch and display subjects
+    // Fetch and display subjects specific to the manager
     async function fetchSubjects() {
         loadingMessage.textContent = 'در حال بارگذاری درس‌ها...';
         subjectsTableBody.innerHTML = '';
 
-        const { data: subjects, error } = await supabase
-            .from('subjects')
-            .select('*')
-            .order('created_at', { ascending: false });
+        let query = supabase.from('subjects').select('*');
+
+        // Filter subjects by the manager's ID, unless it's a super_admin
+        if (currentUserProfile.role === 'admin' || currentUserProfile.role === 'consultant') {
+            query = query.eq('manager_id', currentUserProfile.id);
+        }
+        // super_admin sees all subjects
+
+        const { data: subjects, error } = await query.order('created_at', { ascending: false });
 
         if (error) {
             loadingMessage.textContent = 'خطا در بارگذاری درس‌ها.';
@@ -99,19 +109,24 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        let subjectData = {
+            name: name,
+            manager_id: currentUserProfile.id // Always set the manager_id
+        };
+
         let error;
         if (id) {
             // Update existing subject
             const { error: updateError } = await supabase
                 .from('subjects')
-                .update({ name: name })
+                .update({ name: name }) // Only name can be updated
                 .eq('id', id);
             error = updateError;
         } else {
-            // Insert new subject
+            // Insert new subject with manager_id
             const { error: insertError } = await supabase
                 .from('subjects')
-                .insert([{ name: name }]);
+                .insert([subjectData]);
             error = insertError;
         }
 
@@ -139,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (deleteButton) {
             const id = deleteButton.dataset.id;
-            if (confirm('آیا از حذف این درس مطمئن هستید؟')) {
+            if (confirm('آیا از حذف این درس مطمئن هستید؟ (تمام آزمون‌های مرتبط نیز حذف خواهند شد)')) {
                 const { error } = await supabase
                     .from('subjects')
                     .delete()
@@ -165,7 +180,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Initial Load
-    checkAdminRole().then(() => {
-        fetchSubjects();
+    checkAccessRole().then((hasAccess) => {
+        if (hasAccess) {
+            fetchSubjects();
+        }
     });
 });

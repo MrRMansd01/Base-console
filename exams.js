@@ -16,43 +16,55 @@ document.addEventListener('DOMContentLoaded', () => {
     const examsTableBody = document.querySelector('#exams-table tbody');
     const loadingMessage = document.getElementById('loading-message');
     
+    let currentUserProfile = null;
+
     // Initialize date picker
     const datePicker = flatpickr(examDateInput, {
         locale: "fa",
         dateFormat: "Y-m-d",
     });
 
-    // Check user role (Admin or Teacher)
+    // Check user role and get their profile
     async function checkAccessRole() {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError || !session) {
             window.location.href = '/login.html';
-            return;
+            return false;
         }
-
+        
         const { data: profile, error } = await supabase
             .from('profiles')
-            .select('role')
-            .eq('id', user.id)
+            .select('id, role')
+            .eq('id', session.user.id)
             .single();
 
-        if (error || !['admin', 'teacher'].includes(profile.role)) {
+        if (error || !['admin', 'teacher', 'consultant', 'super_admin'].includes(profile.role)) {
             alert('شما دسترسی لازم برای مشاهده این صفحه را ندارید.');
             window.location.href = '/home.html';
+            return false;
         }
+        currentUserProfile = profile;
+        return true;
     }
 
-    // Fetch subjects to populate dropdown
+    // Fetch subjects specific to the manager to populate dropdown
     async function populateSubjectsDropdown() {
-        const { data: subjects, error } = await supabase
-            .from('subjects')
-            .select('id, name');
+        let query = supabase.from('subjects').select('id, name');
+
+        // Filter subjects by the manager's ID, unless it's a super_admin
+        if (currentUserProfile.role === 'admin' || currentUserProfile.role === 'consultant') {
+            query = query.eq('manager_id', currentUserProfile.id);
+        }
+        // super_admin sees all subjects
+
+        const { data: subjects, error } = await query;
 
         if (error) {
             console.error('Error fetching subjects:', error);
             return;
         }
 
+        subjectSelect.innerHTML = '<option value="">انتخاب کنید...</option>'; // Clear previous options
         subjects.forEach(subject => {
             const option = document.createElement('option');
             option.value = subject.id;
@@ -61,15 +73,20 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Fetch and display exams
+    // Fetch and display exams specific to the manager
     async function fetchExams() {
         loadingMessage.textContent = 'در حال بارگذاری آزمون‌ها...';
         examsTableBody.innerHTML = '';
 
-        const { data: exams, error } = await supabase
-            .from('exams')
-            .select('*, subjects(name)') // Join with subjects table
-            .order('exam_date', { ascending: false });
+        let query = supabase.from('exams').select('*, subjects(name)');
+
+        // Filter exams by the manager's ID, unless it's a super_admin
+        if (currentUserProfile.role === 'admin' || currentUserProfile.role === 'consultant') {
+            query = query.eq('manager_id', currentUserProfile.id);
+        }
+        // super_admin sees all exams
+
+        const { data: exams, error } = await query.order('exam_date', { ascending: false });
 
         if (error) {
             loadingMessage.textContent = 'خطا در بارگذاری آزمون‌ها.';
@@ -85,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${exam.name}</td>
-                    <td>${exam.subjects.name}</td>
+                    <td>${exam.subjects ? exam.subjects.name : 'درس حذف شده'}</td>
                     <td>${new Date(exam.exam_date).toLocaleDateString('fa-IR')}</td>
                     <td class="actions-cell">
                         <button class="btn-icon btn-edit" data-id="${exam.id}" data-name="${exam.name}" data-subject-id="${exam.subject_id}" data-date="${exam.exam_date}" title="ویرایش"><i class="fas fa-edit"></i></button>
@@ -131,11 +148,17 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const examData = { name, subject_id, exam_date };
+        const examData = { 
+            name, 
+            subject_id, 
+            exam_date,
+            manager_id: currentUserProfile.id // Always set the manager_id
+        };
         let error;
 
         if (id) {
             // Update existing exam
+            delete examData.manager_id; // Don't change manager_id on update
             const { error: updateError } = await supabase
                 .from('exams')
                 .update(examData)
@@ -201,8 +224,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Initial Load
-    checkAccessRole().then(() => {
-        populateSubjectsDropdown();
-        fetchExams();
+    checkAccessRole().then((hasAccess) => {
+        if (hasAccess) {
+            populateSubjectsDropdown();
+            fetchExams();
+        }
     });
 });
